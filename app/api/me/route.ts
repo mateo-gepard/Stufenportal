@@ -14,19 +14,19 @@ export async function GET(req: Request) {
   if (!device) return NextResponse.json(empty);
 
   const db = getDb();
-  const m = db.prepare("SELECT name, show_on_leaderboard FROM members WHERE device_id = ?").get(device) as
-    | { name: string; show_on_leaderboard: number }
-    | undefined;
-  const history = db
+  const m = await db
+    .prepare("SELECT name, show_on_leaderboard FROM members WHERE device_id = ?")
+    .get<{ name: string; show_on_leaderboard: number }>(device);
+  const history = await db
     .prepare(
       "SELECT id, points, reason, created_at FROM point_events WHERE device_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 20"
     )
-    .all(device) as Me["history"];
+    .all<Me["history"][number]>(device);
 
   return NextResponse.json({
     name: m?.name ?? "",
     show_on_leaderboard: !!m?.show_on_leaderboard,
-    points: pointsFor(db, device),
+    points: await pointsFor(device),
     history,
   } satisfies Me);
 }
@@ -42,11 +42,13 @@ export async function POST(req: Request) {
 
   const db = getDb();
   const now = nowIso();
-  db.prepare(
-    `INSERT INTO members (device_id, name, show_on_leaderboard, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(device_id) DO UPDATE SET name = excluded.name, show_on_leaderboard = excluded.show_on_leaderboard, updated_at = excluded.updated_at`
-  ).run(device, name, show, now, now);
+  await db
+    .prepare(
+      `INSERT INTO members (device_id, name, show_on_leaderboard, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(device_id) DO UPDATE SET name = excluded.name, show_on_leaderboard = excluded.show_on_leaderboard, updated_at = excluded.updated_at`
+    )
+    .run(device, name, show, now, now);
 
   return NextResponse.json({ ok: true });
 }

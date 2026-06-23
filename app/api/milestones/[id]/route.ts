@@ -9,12 +9,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const forbidden = requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
-  const m = db.prepare("SELECT id FROM milestones WHERE id = ? AND deleted_at IS NULL").get(params.id);
+  const m = await db.prepare("SELECT id FROM milestones WHERE id = ? AND deleted_at IS NULL").get(params.id);
   if (!m) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
 
   const body = await readJson(req);
   const sets: string[] = [];
-  const vals: unknown[] = [];
+  const vals: import("@libsql/client").InValue[] = [];
   if (body.done !== undefined) {
     sets.push("done = ?");
     vals.push(body.done ? 1 : 0);
@@ -35,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (sets.length) {
     vals.push(params.id);
-    db.prepare(`UPDATE milestones SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+    await db.prepare(`UPDATE milestones SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
   }
   return NextResponse.json({ ok: true });
 }
@@ -43,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const forbidden = requireAdmin();
   if (forbidden) return forbidden;
-  getDb()
+  await getDb()
     .prepare("UPDATE milestones SET deleted_at = ? WHERE id = ?")
     .run(nowIso(), params.id);
   return NextResponse.json({ ok: true });

@@ -15,11 +15,11 @@ export async function GET(req: Request) {
   const device = deviceId(req);
   if (!type || !id) return NextResponse.json({ comments: [] });
 
-  const rows = getDb()
+  const rows = await getDb()
     .prepare(
       "SELECT id,author_name,body,created_at,device_id FROM comments WHERE target_type = ? AND target_id = ? AND deleted_at IS NULL ORDER BY created_at ASC"
     )
-    .all(type, id) as (Comment & { device_id: string })[];
+    .all<Comment & { device_id: string }>(type, id);
 
   return NextResponse.json({
     comments: rows.map((r) => ({
@@ -45,10 +45,10 @@ export async function POST(req: Request) {
   const id = newId();
   const authorName = trimmed(body.author_name).slice(0, 40) || "Anonym";
   const db = getDb();
-  db.prepare(
-    "INSERT INTO comments (id,target_type,target_id,device_id,author_name,body,created_at) VALUES (?,?,?,?,?,?,?)"
-  ).run(id, type, targetId, device, authorName, text, nowIso());
-  upsertMember(db, device, authorName);
+  await db
+    .prepare("INSERT INTO comments (id,target_type,target_id,device_id,author_name,body,created_at) VALUES (?,?,?,?,?,?,?)")
+    .run(id, type, targetId, device, authorName, text, nowIso());
+  await upsertMember(device, authorName);
 
   return NextResponse.json({ id }, { status: 201 });
 }

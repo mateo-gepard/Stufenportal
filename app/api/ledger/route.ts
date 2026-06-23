@@ -9,19 +9,19 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const db = getDb();
   const admin = isAdmin();
-  const rows = db
+  const rows = await db
     .prepare(
       "SELECT id,kind,amount,description,category,occurred_at,paid_by FROM ledger WHERE deleted_at IS NULL ORDER BY occurred_at DESC, created_at DESC"
     )
-    .all() as {
-    id: string;
-    kind: "income" | "expense";
-    amount: number;
-    description: string;
-    category: string;
-    occurred_at: string;
-    paid_by: string | null;
-  }[];
+    .all<{
+      id: string;
+      kind: "income" | "expense";
+      amount: number;
+      description: string;
+      category: string;
+      occurred_at: string;
+      paid_by: string | null;
+    }>();
 
   // Harte Grenze: paid_by nur für Admin/Kassenwart. Sonst entfernen (nicht nur im UI).
   const entries = rows.map((r) => ({ ...r, paid_by: admin ? r.paid_by : null }));
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
   const db = getDb();
   const id = newId();
-  db.prepare(
+  await db.prepare(
     "INSERT INTO ledger (id,kind,amount,description,category,occurred_at,paid_by,created_at) VALUES (?,?,?,?,?,?,?,?)"
   ).run(
     id,

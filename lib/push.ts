@@ -17,9 +17,9 @@ function configure(): boolean {
 export async function broadcast(payload: { title: string; body: string; url?: string }) {
   if (!configure()) return { sent: 0, skipped: "no-vapid" as const };
   const db = getDb();
-  const subs = db
+  const subs = await db
     .prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions")
-    .all() as { id: string; endpoint: string; p256dh: string; auth: string }[];
+    .all<{ id: string; endpoint: string; p256dh: string; auth: string }>();
   const body = JSON.stringify(payload);
   let sent = 0;
   await Promise.all(
@@ -33,7 +33,7 @@ export async function broadcast(payload: { title: string; body: string; url?: st
       } catch (err: unknown) {
         const code = (err as { statusCode?: number }).statusCode;
         if (code === 404 || code === 410) {
-          db.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(s.id);
+          await db.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(s.id);
         }
       }
     })

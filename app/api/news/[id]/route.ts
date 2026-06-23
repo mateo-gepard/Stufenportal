@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { nowIso, readJson, trimmed, str, oneOf } from "@/lib/util";
 import type { Priority, NewsStatus } from "@/lib/types";
+import type { InValue } from "@libsql/client";
 
 export const runtime = "nodejs";
 
@@ -14,14 +15,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const forbidden = requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
-  const current = db
-    .prepare("SELECT * FROM news WHERE id = ? AND deleted_at IS NULL")
-    .get(params.id) as any;
+  const current = await db.prepare("SELECT * FROM news WHERE id = ? AND deleted_at IS NULL").get<any>(params.id);
   if (!current) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
 
   const body = await readJson(req);
   const sets: string[] = [];
-  const vals: unknown[] = [];
+  const vals: InValue[] = [];
 
   if (body.title !== undefined) {
     const t = trimmed(body.title);
@@ -45,38 +44,35 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const ns = oneOf<NewsStatus>(body.status, NEWS_STATUS, current.status);
     sets.push("status = ?");
     vals.push(ns);
-    // Erstmaliges Veröffentlichen setzt published_at.
     if (ns === "published" && !current.published_at) {
       sets.push("published_at = ?");
       vals.push(nowIso());
     }
   }
   if (body.featured !== undefined) {
-    const wantFeatured = !!body.featured;
     sets.push("featured = ?");
-    vals.push(wantFeatured ? 1 : 0);
+    vals.push(body.featured ? 1 : 0);
     if (body.featured_until !== undefined) {
       sets.push("featured_until = ?");
       vals.push(str(body.featured_until) || null);
     }
   }
 
-  const tx = db.transaction(() => {
-    if (sets.length) {
-      const v = [...vals, params.id];
-      db.prepare(`UPDATE news SET ${sets.join(", ")} WHERE id = ?`).run(...v);
+  if (sets.length) {
+    await db.prepare(`UPDATE news SET ${sets.join(", ")} WHERE id = ?`).run(...vals, params.id);
+  }
+
+  // Max. 3 beförderte News: ältestes fällt automatisch heraus (§7.4).
+  if (body.featured === true) {
+    const featured = await db
+      .prepare(
+        "SELECT id FROM news WHERE featured = 1 AND deleted_at IS NULL ORDER BY COALESCE(published_at, created_at) DESC"
+      )
+      .all<{ id: string }>();
+    for (const n of featured.slice(MAX_FEATURED)) {
+      await db.prepare("UPDATE news SET featured = 0 WHERE id = ?").run(n.id);
     }
-    // Max. 3 beförderte News: ältestes fällt automatisch heraus (§7.4).
-    if (body.featured === true) {
-      const featured = db
-        .prepare("SELECT id FROM news WHERE featured = 1 AND deleted_at IS NULL ORDER BY COALESCE(published_at, created_at) DESC")
-        .all() as { id: string }[];
-      featured.slice(MAX_FEATURED).forEach((n) =>
-        db.prepare("UPDATE news SET featured = 0 WHERE id = ?").run(n.id)
-      );
-    }
-  });
-  tx();
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -84,6 +80,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const forbidden = requireAdmin();
   if (forbidden) return forbidden;
-  getDb().prepare("UPDATE news SET deleted_at = ? WHERE id = ?").run(nowIso(), params.id);
+  await getDb().prepare("UPDATE news SET deleted_at = ? WHERE id = ?").run(nowIso(), params.id);
   return NextResponse.json({ ok: true });
 }

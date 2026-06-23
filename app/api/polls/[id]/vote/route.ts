@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, batch } from "@/lib/db";
 import { deviceId, voterHash, isAdmin } from "@/lib/auth";
 import { newId, nowIso, readJson } from "@/lib/util";
 import { autoClose, buildPollDetail } from "@/lib/polls";
+import type { InValue } from "@libsql/client";
 
 export const runtime = "nodejs";
 
@@ -11,16 +12,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!device) return NextResponse.json({ error: "Keine Geräte-ID." }, { status: 400 });
 
   const db = getDb();
-  let poll = db.prepare("SELECT * FROM polls WHERE id = ? AND deleted_at IS NULL").get(params.id) as any;
+  let poll = await db.prepare("SELECT * FROM polls WHERE id = ? AND deleted_at IS NULL").get<any>(params.id);
   if (!poll) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
-  poll = autoClose(db, poll);
+  poll = await autoClose(poll);
   if (poll.status !== "open") {
     return NextResponse.json({ error: "Abstimmung ist geschlossen." }, { status: 409 });
   }
 
-  const validOptions = new Set(
-    (db.prepare("SELECT id FROM poll_options WHERE poll_id = ?").all(poll.id) as { id: string }[]).map((o) => o.id)
-  );
+  const optRows = await db.prepare("SELECT id FROM poll_options WHERE poll_id = ?").all<{ id: string }>(poll.id);
+  const validOptions = new Set(optRows.map((o) => o.id));
 
   const body = await readJson(req);
   // Auswahl je Methode normalisieren → [{option_id, rank}]
@@ -36,7 +36,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: "Ungültige Auswahl." }, { status: 400 });
     items = uniq.map((o) => ({ option_id: o, rank: null }));
   } else {
-    // ranked
     const ranking = Array.isArray(body.ranking) ? body.ranking.filter((o: unknown) => typeof o === "string") : [];
     const uniq = Array.from(new Set(ranking)) as string[];
     if (uniq.length < 1 || uniq.some((o) => !validOptions.has(o)))
@@ -46,22 +45,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const ballotId = newId();
   const anon = !!poll.anonymous;
+  const stmts: { sql: string; args: InValue[] }[] = [
+    {
+      sql: "INSERT INTO ballots (id,poll_id,device_id,voter_hash,created_at) VALUES (?,?,?,?,?)",
+      args: [ballotId, poll.id, anon ? null : device, anon ? voterHash(poll.poll_secret, device) : null, nowIso()],
+    },
+    ...items.map((it) => ({
+      sql: "INSERT INTO vote_items (id,ballot_id,option_id,rank) VALUES (?,?,?,?)",
+      args: [newId(), ballotId, it.option_id, it.rank] as InValue[],
+    })),
+  ];
+
   try {
-    const tx = db.transaction(() => {
-      db.prepare(
-        "INSERT INTO ballots (id,poll_id,device_id,voter_hash,created_at) VALUES (?,?,?,?,?)"
-      ).run(ballotId, poll.id, anon ? null : device, anon ? voterHash(poll.poll_secret, device) : null, nowIso());
-      const ins = db.prepare("INSERT INTO vote_items (id,ballot_id,option_id,rank) VALUES (?,?,?,?)");
-      items.forEach((it) => ins.run(newId(), ballotId, it.option_id, it.rank));
-    });
-    tx();
+    await batch(stmts);
   } catch (err: unknown) {
-    if (String((err as Error).message).includes("UNIQUE")) {
+    const msg = String((err as Error).message || "");
+    if (/UNIQUE|constraint/i.test(msg)) {
       return NextResponse.json({ error: "Du hast schon abgestimmt." }, { status: 409 });
     }
     throw err;
   }
 
-  const detail = buildPollDetail(db, poll, device, isAdmin());
+  const detail = await buildPollDetail(poll, device, isAdmin());
   return NextResponse.json({ poll: detail }, { status: 201 });
 }

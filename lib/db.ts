@@ -1,40 +1,95 @@
-import Database from "better-sqlite3";
-import crypto from "node:crypto";
+import { createClient, type Client, type InValue, type Transaction } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 
-// Single shared SQLite connection. The schema below is the v1 subset of the
-// project.md data model. Every "mutable" row carries deleted_at for soft-delete.
-// Permissions are enforced in the route handlers (see lib/auth.ts) — never only
-// in the frontend.
+// Datenschicht auf libsql (SQLite-kompatibel). Lokal gegen eine Datei, auf Vercel
+// gegen Turso — dieselbe Codebasis, gesteuert über Env-Variablen:
+//   TURSO_DATABASE_URL=libsql://<db>.turso.io   (lokal: file:./data/stufenportal.db)
+//   TURSO_AUTH_TOKEN=<token>                     (nur für Turso nötig)
+// Der Wrapper unten bildet die von better-sqlite3 gewohnte API nach, nur async.
 
-let db: Database.Database | null = null;
-
-function init(): Database.Database {
-  const dir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const conn = new Database(path.join(dir, "stufenportal.db"));
-  conn.pragma("journal_mode = WAL");
-  conn.pragma("foreign_keys = ON");
-  migrate(conn);
-  // Beispieldaten nur, wenn ausdrücklich gewünscht (SP_SEED=true). Standard: leer starten.
-  if (process.env.SP_SEED === "true") seedIfEmpty(conn);
-  return conn;
+let client: Client | null = null;
+function raw(): Client {
+  if (!client) {
+    const url = process.env.TURSO_DATABASE_URL || "file:./data/stufenportal.db";
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+    // Lokale Datei-DB: Zielordner sicherstellen (Turso-URLs brauchen das nicht).
+    if (url.startsWith("file:")) {
+      const dir = path.dirname(url.slice("file:".length));
+      if (dir) fs.mkdirSync(dir, { recursive: true });
+    }
+    client = createClient(authToken ? { url, authToken } : { url });
+  }
+  return client;
 }
 
-export function getDb(): Database.Database {
-  if (!db) db = init();
-  return db;
+let initPromise: Promise<void> | null = null;
+async function ensureInit(): Promise<void> {
+  if (!initPromise) initPromise = migrate();
+  await initPromise;
 }
 
-function migrate(c: Database.Database) {
-  c.exec(`
+export interface Stmt {
+  get<T = any>(...args: InValue[]): Promise<T | undefined>;
+  all<T = any>(...args: InValue[]): Promise<T[]>;
+  run(...args: InValue[]): Promise<void>;
+}
+
+function prepare(sql: string): Stmt {
+  return {
+    async get<T>(...args: InValue[]) {
+      await ensureInit();
+      const r = await raw().execute({ sql, args });
+      return (r.rows[0] as unknown as T) ?? undefined;
+    },
+    async all<T>(...args: InValue[]) {
+      await ensureInit();
+      const r = await raw().execute({ sql, args });
+      return r.rows as unknown as T[];
+    },
+    async run(...args: InValue[]) {
+      await ensureInit();
+      await raw().execute({ sql, args });
+    },
+  };
+}
+
+export function getDb(): { prepare: (sql: string) => Stmt } {
+  return { prepare };
+}
+
+/** Atomare Transaktion für mehrere unabhängige Schreib-Statements. */
+export async function batch(statements: { sql: string; args?: InValue[] }[]): Promise<void> {
+  await ensureInit();
+  await raw().batch(
+    statements.map((s) => ({ sql: s.sql, args: s.args ?? [] })),
+    "write"
+  );
+}
+
+/** Interaktive Transaktion für Lesen-dann-Schreiben. */
+export async function tx<T>(fn: (t: Transaction) => Promise<T>): Promise<T> {
+  await ensureInit();
+  const t = await raw().transaction("write");
+  try {
+    const out = await fn(t);
+    await t.commit();
+    return out;
+  } catch (e) {
+    await t.rollback();
+    throw e;
+  }
+}
+
+async function migrate(): Promise<void> {
+  // executeMultiple führt mehrere durch ; getrennte Statements aus (ohne Args).
+  await raw().executeMultiple(`
     CREATE TABLE IF NOT EXISTS events (
       id          TEXT PRIMARY KEY,
       title       TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       type        TEXT NOT NULL DEFAULT 'event',
-      status      TEXT NOT NULL DEFAULT 'planning', -- idea|planning|active|done|cancelled
+      status      TEXT NOT NULL DEFAULT 'planning',
       start_at    TEXT,
       end_at      TEXT,
       cover_url   TEXT,
@@ -44,7 +99,7 @@ function migrate(c: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS milestones (
       id         TEXT PRIMARY KEY,
-      event_id   TEXT NOT NULL REFERENCES events(id),
+      event_id   TEXT NOT NULL,
       title      TEXT NOT NULL,
       done       INTEGER NOT NULL DEFAULT 0,
       assignee   TEXT,
@@ -55,27 +110,27 @@ function migrate(c: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS signup_lists (
       id         TEXT PRIMARY KEY,
-      event_id   TEXT NOT NULL REFERENCES events(id),
+      event_id   TEXT NOT NULL,
       title      TEXT NOT NULL,
-      overflow   TEXT NOT NULL DEFAULT 'block', -- block|waitlist
+      overflow   TEXT NOT NULL DEFAULT 'block',
       ord        INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS slots (
       id        TEXT PRIMARY KEY,
-      list_id   TEXT NOT NULL REFERENCES signup_lists(id),
+      list_id   TEXT NOT NULL,
       label     TEXT NOT NULL,
-      capacity  INTEGER, -- NULL = unbegrenzt
+      capacity  INTEGER,
       ord       INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS signups (
       id           TEXT PRIMARY KEY,
-      slot_id      TEXT NOT NULL REFERENCES slots(id),
+      slot_id      TEXT NOT NULL,
       device_id    TEXT NOT NULL,
       display_name TEXT NOT NULL DEFAULT 'Anonym',
-      status       TEXT NOT NULL DEFAULT 'confirmed', -- confirmed|waitlist
+      status       TEXT NOT NULL DEFAULT 'confirmed',
       created_at   TEXT NOT NULL,
       UNIQUE(slot_id, device_id)
     );
@@ -85,8 +140,8 @@ function migrate(c: Database.Database) {
       title          TEXT NOT NULL,
       body           TEXT NOT NULL DEFAULT '',
       category       TEXT NOT NULL DEFAULT 'Allgemein',
-      priority       TEXT NOT NULL DEFAULT 'normal', -- normal|wichtig|dringend
-      status         TEXT NOT NULL DEFAULT 'published', -- draft|published|hidden|archived
+      priority       TEXT NOT NULL DEFAULT 'normal',
+      status         TEXT NOT NULL DEFAULT 'published',
       featured       INTEGER NOT NULL DEFAULT 0,
       featured_until TEXT,
       created_at     TEXT NOT NULL,
@@ -97,31 +152,29 @@ function migrate(c: Database.Database) {
     CREATE TABLE IF NOT EXISTS polls (
       id                    TEXT PRIMARY KEY,
       question              TEXT NOT NULL,
-      method                TEXT NOT NULL DEFAULT 'single', -- single|approval|ranked
+      method                TEXT NOT NULL DEFAULT 'single',
       anonymous             INTEGER NOT NULL DEFAULT 0,
-      reveal                TEXT NOT NULL DEFAULT 'live', -- live|after_close
+      reveal                TEXT NOT NULL DEFAULT 'live',
       quorum                INTEGER,
       result_visibility_min INTEGER NOT NULL DEFAULT 5,
       tie_break             TEXT NOT NULL DEFAULT 'admin',
       poll_secret           TEXT NOT NULL,
       closes_at             TEXT,
-      status                TEXT NOT NULL DEFAULT 'open', -- open|closed|invalid
+      status                TEXT NOT NULL DEFAULT 'open',
       created_at            TEXT NOT NULL,
       deleted_at            TEXT
     );
 
     CREATE TABLE IF NOT EXISTS poll_options (
       id      TEXT PRIMARY KEY,
-      poll_id TEXT NOT NULL REFERENCES polls(id),
+      poll_id TEXT NOT NULL,
       label   TEXT NOT NULL,
       ord     INTEGER NOT NULL DEFAULT 0
     );
 
-    -- One ballot per device per poll (the integrity unit). For anonymous polls
-    -- we store voter_hash = HMAC(poll_secret, device_id) and NO device_id.
     CREATE TABLE IF NOT EXISTS ballots (
       id         TEXT PRIMARY KEY,
-      poll_id    TEXT NOT NULL REFERENCES polls(id),
+      poll_id    TEXT NOT NULL,
       device_id  TEXT,
       voter_hash TEXT,
       created_at TEXT NOT NULL
@@ -131,26 +184,26 @@ function migrate(c: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS vote_items (
       id        TEXT PRIMARY KEY,
-      ballot_id TEXT NOT NULL REFERENCES ballots(id),
-      option_id TEXT NOT NULL REFERENCES poll_options(id),
-      rank      INTEGER -- nur Ranked
+      ballot_id TEXT NOT NULL,
+      option_id TEXT NOT NULL,
+      rank      INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS ledger (
       id          TEXT PRIMARY KEY,
-      kind        TEXT NOT NULL, -- income|expense
-      amount      INTEGER NOT NULL, -- Cent
+      kind        TEXT NOT NULL,
+      amount      INTEGER NOT NULL,
       description TEXT NOT NULL,
       category    TEXT NOT NULL DEFAULT 'Allgemein',
       occurred_at TEXT NOT NULL,
-      paid_by     TEXT, -- nur Admin/Kassenwart sichtbar
+      paid_by     TEXT,
       created_at  TEXT NOT NULL,
       deleted_at  TEXT
     );
 
     CREATE TABLE IF NOT EXISTS comments (
       id          TEXT PRIMARY KEY,
-      target_type TEXT NOT NULL, -- event|news
+      target_type TEXT NOT NULL,
       target_id   TEXT NOT NULL,
       device_id   TEXT NOT NULL,
       author_name TEXT NOT NULL DEFAULT 'Anonym',
@@ -167,8 +220,6 @@ function migrate(c: Database.Database) {
       created_at TEXT NOT NULL
     );
 
-    -- Passwortlose, lokale Identität: anonyme Geräte-ID + selbstgewählter Name.
-    -- Kein Konto, kein Login. Leaderboard-Sichtbarkeit ist opt-in (Default aus).
     CREATE TABLE IF NOT EXISTS members (
       device_id           TEXT PRIMARY KEY,
       name                TEXT NOT NULL,
@@ -177,155 +228,15 @@ function migrate(c: Database.Database) {
       updated_at          TEXT NOT NULL
     );
 
-    -- Punkte fürs Mitmachen. Sprecher vergeben sie mit Grund (transparent).
     CREATE TABLE IF NOT EXISTS point_events (
       id         TEXT PRIMARY KEY,
-      device_id  TEXT NOT NULL,             -- Empfänger
+      device_id  TEXT NOT NULL,
       points     INTEGER NOT NULL,
       reason     TEXT NOT NULL DEFAULT '',
-      source     TEXT NOT NULL DEFAULT 'sprecher', -- sprecher|system
+      source     TEXT NOT NULL DEFAULT 'sprecher',
       created_at TEXT NOT NULL,
       deleted_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_points_recipient ON point_events(device_id);
   `);
-}
-
-function seedIfEmpty(c: Database.Database) {
-  const n = c.prepare("SELECT COUNT(*) AS n FROM events").get() as { n: number };
-  if (n.n > 0) return;
-  const now = new Date();
-  const iso = (d: Date) => d.toISOString();
-  const inDays = (days: number) => iso(new Date(now.getTime() + days * 864e5));
-  const id = () => crypto.randomUUID();
-
-  // --- Event: Kuchenverkauf ---
-  const evId = id();
-  c.prepare(
-    `INSERT INTO events (id,title,description,type,status,start_at,created_at)
-     VALUES (?,?,?,?,?,?,?)`
-  ).run(
-    evId,
-    "Kuchenverkauf am Elternsprechtag",
-    "Wir verkaufen Kuchen in der Aula. Erlös geht in die Abikasse. Bitte tragt euch für Backen und Standdienst ein.",
-    "event",
-    "planning",
-    inDays(9),
-    iso(now)
-  );
-  const ms = c.prepare(
-    `INSERT INTO milestones (id,event_id,title,done,assignee,due_at,ord) VALUES (?,?,?,?,?,?,?)`
-  );
-  ms.run(id(), evId, "Standplatz mit Schule klären", 1, "Mia", inDays(-2), 0);
-  ms.run(id(), evId, "Backliste füllen", 0, null, inDays(4), 1);
-  ms.run(id(), evId, "Wechselgeld besorgen", 0, "Jonas", inDays(7), 2);
-  ms.run(id(), evId, "Auf- und Abbau planen", 0, null, inDays(8), 3);
-
-  const listId = id();
-  c.prepare(
-    `INSERT INTO signup_lists (id,event_id,title,overflow,ord) VALUES (?,?,?,?,?)`
-  ).run(listId, evId, "Standdienst", "waitlist", 0);
-  const slot = c.prepare(`INSERT INTO slots (id,list_id,label,capacity,ord) VALUES (?,?,?,?,?)`);
-  slot.run(id(), listId, "1. Schicht · 8–10 Uhr", 3, 0);
-  slot.run(id(), listId, "2. Schicht · 10–12 Uhr", 3, 1);
-  slot.run(id(), listId, "Abbau · ab 12 Uhr", 2, 2);
-
-  // --- Event: Abiball ---
-  const ev2 = id();
-  c.prepare(
-    `INSERT INTO events (id,title,description,type,status,start_at,created_at) VALUES (?,?,?,?,?,?,?)`
-  ).run(
-    ev2,
-    "Abiball-Orga",
-    "Location, Catering, Programm. Das große Ding für nächstes Jahr — wir fangen jetzt an.",
-    "event",
-    "active",
-    inDays(120),
-    iso(now)
-  );
-  ms.run(id(), ev2, "Location-Optionen sammeln", 1, null, null, 0);
-  ms.run(id(), ev2, "Abstimmung Location", 0, null, null, 1);
-  ms.run(id(), ev2, "Catering anfragen", 0, null, null, 2);
-
-  // --- News ---
-  const news = c.prepare(
-    `INSERT INTO news (id,title,body,category,priority,status,featured,featured_until,created_at,published_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`
-  );
-  news.run(
-    id(),
-    "Rückmeldung Abimotto bis Freitag",
-    "Tragt eure Vorschläge in die Abstimmung ein. Am Freitag schließen wir die Sammlung und stimmen dann ab.",
-    "Abi",
-    "wichtig",
-    "published",
-    1,
-    inDays(3),
-    iso(now),
-    iso(now)
-  );
-  news.run(
-    id(),
-    "Kassenstand aktualisiert",
-    "Nach dem letzten Kuchenverkauf stehen wir gut da. Details in der Kasse.",
-    "Kasse",
-    "normal",
-    "published",
-    0,
-    null,
-    iso(new Date(now.getTime() - 2 * 864e5)),
-    iso(new Date(now.getTime() - 2 * 864e5))
-  );
-
-  // --- Poll: Abimotto (ranked) ---
-  const pollId = id();
-  c.prepare(
-    `INSERT INTO polls (id,question,method,anonymous,reveal,result_visibility_min,tie_break,poll_secret,closes_at,status,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(
-    pollId,
-    "Welches Abimotto?",
-    "ranked",
-    1,
-    "after_close",
-    5,
-    "admin",
-    crypto.randomBytes(16).toString("hex"),
-    inDays(5),
-    "open",
-    iso(now)
-  );
-  const opt = c.prepare(`INSERT INTO poll_options (id,poll_id,label,ord) VALUES (?,?,?,?)`);
-  ["ABInce ohne Geld", "ABIginn war alles besser", "ABIza Hut", "Game of ABI"].forEach((l, i) =>
-    opt.run(id(), pollId, l, i)
-  );
-
-  // --- Poll: Abiball-Termin (single) ---
-  const poll2 = id();
-  c.prepare(
-    `INSERT INTO polls (id,question,method,anonymous,reveal,poll_secret,closes_at,status,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?)`
-  ).run(
-    poll2,
-    "Wann passt der Abiball am besten?",
-    "single",
-    0,
-    "live",
-    crypto.randomBytes(16).toString("hex"),
-    inDays(10),
-    "open",
-    iso(now)
-  );
-  ["Freitag 03.07.", "Samstag 04.07.", "Freitag 10.07."].forEach((l, i) =>
-    opt.run(id(), poll2, l, i)
-  );
-
-  // --- Ledger ---
-  const led = c.prepare(
-    `INSERT INTO ledger (id,kind,amount,description,category,occurred_at,paid_by,created_at) VALUES (?,?,?,?,?,?,?,?)`
-  );
-  led.run(id(), "income", 18750, "Kuchenverkauf September", "Aktion", inDays(-20), null, iso(now));
-  led.run(id(), "income", 9000, "Pfandsammeln", "Aktion", inDays(-12), null, iso(now));
-  led.run(id(), "expense", 4230, "Backzutaten", "Material", inDays(-21), "Mia", iso(now));
-  led.run(id(), "expense", 2500, "Plakate & Druck", "Material", inDays(-10), "Jonas", iso(now));
 }

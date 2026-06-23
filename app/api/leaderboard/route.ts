@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const db = getDb();
   const device = deviceId(req);
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT m.device_id AS device_id, m.name AS name,
               COALESCE((SELECT SUM(points) FROM point_events p WHERE p.device_id = m.device_id AND p.deleted_at IS NULL), 0) AS points
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
        WHERE m.show_on_leaderboard = 1
        ORDER BY points DESC, m.name ASC`
     )
-    .all() as { device_id: string; name: string; points: number }[];
+    .all<{ device_id: string; name: string; points: number }>();
 
   const board: LeaderboardRow[] = rows.map((r, i) => ({
     name: r.name,

@@ -18,12 +18,12 @@ export async function POST(req: Request) {
   if (points == null || points === 0) return NextResponse.json({ error: "Punktzahl fehlt." }, { status: 400 });
 
   const db = getDb();
-  const member = db.prepare("SELECT device_id FROM members WHERE device_id = ?").get(target);
+  const member = await db.prepare("SELECT device_id FROM members WHERE device_id = ?").get(target);
   if (!member) return NextResponse.json({ error: "Mitglied unbekannt." }, { status: 404 });
 
-  db.prepare(
-    "INSERT INTO point_events (id, device_id, points, reason, source, created_at) VALUES (?,?,?,?, 'sprecher', ?)"
-  ).run(newId(), target, points, reason, nowIso());
+  await db
+    .prepare("INSERT INTO point_events (id, device_id, points, reason, source, created_at) VALUES (?,?,?,?, 'sprecher', ?)")
+    .run(newId(), target, points, reason, nowIso());
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

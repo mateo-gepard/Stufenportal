@@ -19,13 +19,11 @@ export async function GET() {
   const db = getDb();
   const admin = isAdmin();
   const rows = admin
-    ? db.prepare("SELECT * FROM news WHERE deleted_at IS NULL ORDER BY COALESCE(published_at, created_at) DESC").all()
-    : db
-        .prepare(
-          "SELECT * FROM news WHERE deleted_at IS NULL AND status = 'published' ORDER BY published_at DESC"
-        )
-        .all();
-  return NextResponse.json({ news: (rows as any[]).map(mapNews) });
+    ? await db.prepare("SELECT * FROM news WHERE deleted_at IS NULL ORDER BY COALESCE(published_at, created_at) DESC").all<any>()
+    : await db
+        .prepare("SELECT * FROM news WHERE deleted_at IS NULL AND status = 'published' ORDER BY published_at DESC")
+        .all<any>();
+  return NextResponse.json({ news: rows.map(mapNews) });
 }
 
 export async function POST(req: Request) {
@@ -43,10 +41,12 @@ export async function POST(req: Request) {
   const priority = oneOf<Priority>(body.priority, PRIORITIES, "normal");
   const published_at = status === "published" ? now : null;
 
-  db.prepare(
-    `INSERT INTO news (id,title,body,category,priority,status,featured,featured_until,created_at,published_at)
-     VALUES (?,?,?,?,?,?,0,NULL,?,?)`
-  ).run(id, title, str(body.body), trimmed(body.category) || "Allgemein", priority, status, now, published_at);
+  await db
+    .prepare(
+      `INSERT INTO news (id,title,body,category,priority,status,featured,featured_until,created_at,published_at)
+       VALUES (?,?,?,?,?,?,0,NULL,?,?)`
+    )
+    .run(id, title, str(body.body), trimmed(body.category) || "Allgemein", priority, status, now, published_at);
 
   // Push bei wichtig/dringend & veröffentlicht.
   if (status === "published" && (priority === "wichtig" || priority === "dringend")) {

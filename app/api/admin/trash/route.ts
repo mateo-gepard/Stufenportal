@@ -11,25 +11,25 @@ export async function GET() {
   if (forbidden) return forbidden;
   const db = getDb();
 
-  const events = db
+  const events = await db
     .prepare("SELECT id, title, deleted_at FROM events WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
-    .all();
-  const news = db
+    .all<any>();
+  const news = await db
     .prepare("SELECT id, title, deleted_at FROM news WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
-    .all();
-  const polls = db
+    .all<any>();
+  const polls = await db
     .prepare("SELECT id, question AS title, deleted_at FROM polls WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
-    .all();
-  const ledger = db
+    .all<any>();
+  const ledger = await db
     .prepare("SELECT id, description AS title, deleted_at FROM ledger WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
-    .all();
+    .all<any>();
 
   return NextResponse.json({
     items: [
-      ...(events as any[]).map((r) => ({ ...r, type: "event" })),
-      ...(news as any[]).map((r) => ({ ...r, type: "news" })),
-      ...(polls as any[]).map((r) => ({ ...r, type: "poll" })),
-      ...(ledger as any[]).map((r) => ({ ...r, type: "ledger" })),
+      ...events.map((r) => ({ ...r, type: "event" })),
+      ...news.map((r) => ({ ...r, type: "news" })),
+      ...polls.map((r) => ({ ...r, type: "poll" })),
+      ...ledger.map((r) => ({ ...r, type: "ledger" })),
     ].sort((a, b) => (a.deleted_at < b.deleted_at ? 1 : -1)),
   });
 }

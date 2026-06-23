@@ -11,10 +11,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ungültiges Abo." }, { status: 400 });
   }
   const db = getDb();
-  db.prepare(
-    `INSERT INTO push_subscriptions (id,endpoint,p256dh,auth,created_at)
-     VALUES (?,?,?,?,?)
-     ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth`
-  ).run(newId(), sub.endpoint, sub.keys.p256dh, sub.keys.auth, nowIso());
+  await db
+    .prepare(
+      `INSERT INTO push_subscriptions (id,endpoint,p256dh,auth,created_at)
+       VALUES (?,?,?,?,?)
+       ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth`
+    )
+    .run(newId(), sub.endpoint, sub.keys.p256dh, sub.keys.auth, nowIso());
   return NextResponse.json({ ok: true });
 }

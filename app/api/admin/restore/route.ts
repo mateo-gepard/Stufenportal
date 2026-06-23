@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, batch } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { readJson, oneOf, trimmed } from "@/lib/util";
 
@@ -26,18 +26,18 @@ export async function POST(req: Request) {
 
   if (purge) {
     // Endgültiges Löschen nur aus dem Papierkorb.
-    db.prepare(`DELETE FROM ${table} WHERE id = ? AND deleted_at IS NOT NULL`).run(id);
+    await db.prepare(`DELETE FROM ${table} WHERE id = ? AND deleted_at IS NOT NULL`).run(id);
     return NextResponse.json({ ok: true, purged: true });
   }
 
-  const tx = db.transaction(() => {
-    db.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?`).run(id);
-    // Event-Wiederherstellung holt mit-soft-gelöschte Kinder zurück.
-    if (type === "event") {
-      db.prepare("UPDATE milestones SET deleted_at = NULL WHERE event_id = ?").run(id);
-      db.prepare("UPDATE signup_lists SET deleted_at = NULL WHERE event_id = ?").run(id);
-    }
-  });
-  tx();
+  const stmts: { sql: string; args: import("@libsql/client").InValue[] }[] = [
+    { sql: `UPDATE ${table} SET deleted_at = NULL WHERE id = ?`, args: [id] },
+  ];
+  // Event-Wiederherstellung holt mit-soft-gelöschte Kinder zurück.
+  if (type === "event") {
+    stmts.push({ sql: "UPDATE milestones SET deleted_at = NULL WHERE event_id = ?", args: [id] });
+    stmts.push({ sql: "UPDATE signup_lists SET deleted_at = NULL WHERE event_id = ?", args: [id] });
+  }
+  await batch(stmts);
   return NextResponse.json({ ok: true });
 }

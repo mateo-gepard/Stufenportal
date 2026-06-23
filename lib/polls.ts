@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import { getDb } from "./db";
 import { voterHash } from "./auth";
 import type { PollDetail, PollResultRow } from "./types";
 
@@ -16,48 +16,51 @@ interface PollRow {
 }
 
 /** Schließt offene Polls, deren Frist abgelaufen ist (serverseitig erzwungen). */
-export function autoClose(db: Database.Database, p: PollRow): PollRow {
+export async function autoClose(p: PollRow): Promise<PollRow> {
   if (p.status === "open" && p.closes_at && new Date(p.closes_at).getTime() < Date.now()) {
-    const quorumOk = p.quorum == null || ballotCount(db, p.id) >= p.quorum;
+    const quorumOk = p.quorum == null || (await ballotCount(p.id)) >= p.quorum;
     const next = quorumOk ? "closed" : "invalid";
-    db.prepare("UPDATE polls SET status = ? WHERE id = ?").run(next, p.id);
+    await getDb().prepare("UPDATE polls SET status = ? WHERE id = ?").run(next, p.id);
     return { ...p, status: next };
   }
   return p;
 }
 
-function ballotCount(db: Database.Database, pollId: string): number {
-  return (
-    db.prepare("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?").get(pollId) as { n: number }
-  ).n;
+async function ballotCount(pollId: string): Promise<number> {
+  const row = await getDb()
+    .prepare("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?")
+    .get<{ n: number }>(pollId);
+  return row?.n ?? 0;
 }
 
-export function buildPollDetail(
-  db: Database.Database,
+export async function buildPollDetail(
   poll: PollRow,
   device: string | null,
   isAdmin: boolean
-): PollDetail {
-  const p = autoClose(db, poll);
-  const options = db
+): Promise<PollDetail> {
+  const db = getDb();
+  const p = await autoClose(poll);
+  const options = await db
     .prepare("SELECT id, label, ord FROM poll_options WHERE poll_id = ? ORDER BY ord")
-    .all(p.id) as { id: string; label: string; ord: number }[];
+    .all<{ id: string; label: string; ord: number }>(p.id);
 
-  const total = ballotCount(db, p.id);
+  const total = await ballotCount(p.id);
 
   // Hat dieses Gerät bereits abgestimmt?
   let myBallotId: string | null = null;
   if (device) {
-    const key = p.anonymous ? { col: "voter_hash", val: voterHash(p.poll_secret, device) } : { col: "device_id", val: device };
-    const row = db
+    const key = p.anonymous
+      ? { col: "voter_hash", val: voterHash(p.poll_secret, device) }
+      : { col: "device_id", val: device };
+    const row = await db
       .prepare(`SELECT id FROM ballots WHERE poll_id = ? AND ${key.col} = ?`)
-      .get(p.id, key.val) as { id: string } | undefined;
+      .get<{ id: string }>(p.id, key.val);
     myBallotId = row?.id ?? null;
   }
   const myChoice = myBallotId
-    ? (db
+    ? await db
         .prepare("SELECT option_id, rank FROM vote_items WHERE ballot_id = ?")
-        .all(myBallotId) as { option_id: string; rank: number | null }[])
+        .all<{ option_id: string; rank: number | null }>(myBallotId)
     : [];
 
   // Ergebnis-Sichtbarkeit
@@ -70,7 +73,7 @@ export function buildPollDetail(
   } else if (p.reveal === "after_close" && !closed && !isAdmin) {
     hiddenReason = "Ergebnis wird erst nach Schluss gezeigt.";
   } else {
-    results = computeResults(db, p, options, total);
+    results = await computeResults(p, options, total);
   }
 
   return {
@@ -92,33 +95,31 @@ export function buildPollDetail(
   };
 }
 
-function computeResults(
-  db: Database.Database,
+async function computeResults(
   p: PollRow,
   options: { id: string; label: string }[],
   total: number
-): PollResultRow[] {
+): Promise<PollResultRow[]> {
+  const db = getDb();
   const values = new Map<string, number>();
   options.forEach((o) => values.set(o.id, 0));
 
   if (p.method === "single" || p.method === "approval") {
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT vi.option_id AS option_id, COUNT(*) AS n
          FROM vote_items vi JOIN ballots b ON b.id = vi.ballot_id
          WHERE b.poll_id = ? GROUP BY vi.option_id`
       )
-      .all(p.id) as { option_id: string; n: number }[];
+      .all<{ option_id: string; n: number }>(p.id);
     rows.forEach((r) => values.set(r.option_id, r.n));
   } else {
     // Ranked → Borda: je Stimmzettel mit K Rängen gibt Rang r → (K - r + 1) Punkte.
-    const ballots = db
-      .prepare("SELECT id FROM ballots WHERE poll_id = ?")
-      .all(p.id) as { id: string }[];
+    const ballots = await db.prepare("SELECT id FROM ballots WHERE poll_id = ?").all<{ id: string }>(p.id);
     for (const b of ballots) {
-      const items = db
+      const items = await db
         .prepare("SELECT option_id, rank FROM vote_items WHERE ballot_id = ? ORDER BY rank")
-        .all(b.id) as { option_id: string; rank: number | null }[];
+        .all<{ option_id: string; rank: number | null }>(b.id);
       const k = items.length;
       items.forEach((it) => {
         const r = it.rank ?? k;
