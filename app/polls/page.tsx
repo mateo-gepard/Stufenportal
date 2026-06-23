@@ -15,6 +15,8 @@ interface PollListItem {
   question: string;
   method: PollMethod;
   anonymous: boolean;
+  rank_limit: number | null;
+  ranked_veto_enabled: boolean;
   status: PollStatus;
   closes_at: string | null;
   total_ballots: number;
@@ -64,6 +66,8 @@ export default function PollsPage() {
               <div className="flex items-center justify-between text-[12px] text-muted">
                 <span>
                   {methodLabel[p.method]}
+                  {p.method === "ranked" && p.rank_limit ? ` · Top ${p.rank_limit}` : ""}
+                  {p.ranked_veto_enabled ? " · Veto" : ""}
                   {p.anonymous ? " · anonym" : ""} · {p.total_ballots} {p.total_ballots === 1 ? "Stimme" : "Stimmen"}
                 </span>
                 {p.status === "open" && p.closes_at && <span>{until(p.closes_at)}</span>}
@@ -106,15 +110,34 @@ function CreatePollSheet({
   const [method, setMethod] = useState<PollMethod>("single");
   const [optionsText, setOptionsText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [rankLimit, setRankLimit] = useState("2");
+  const [rankVeto, setRankVeto] = useState(false);
   const [reveal, setReveal] = useState("live");
   const [closes, setCloses] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const optionCount = optionsText.split("\n").map((l) => l.trim()).filter(Boolean).length;
+  const rankMax = Math.max(1, optionCount - (rankVeto ? 1 : 0));
+
+  useEffect(() => {
+    if (method !== "ranked") return;
+    setRankLimit((current) => {
+      const n = parseInt(current, 10);
+      if (!n || n < 1) return "1";
+      if (n > rankMax) return String(rankMax);
+      return current;
+    });
+  }, [method, rankMax]);
 
   async function submit() {
     const options = optionsText.split("\n").map((l) => l.trim()).filter(Boolean);
     if (!question.trim()) return setErr("Frage fehlt.");
     if (options.length < 2) return setErr("Mindestens 2 Optionen (eine pro Zeile).");
+    const currentRankMax = Math.max(1, options.length - (rankVeto ? 1 : 0));
+    const rankLimitNumber = parseInt(rankLimit, 10);
+    if (method === "ranked" && (!rankLimitNumber || rankLimitNumber < 1 || rankLimitNumber > currentRankMax)) {
+      return setErr(`Anzahl Prios muss zwischen 1 und ${currentRankMax} liegen.`);
+    }
     setBusy(true);
     setErr("");
     try {
@@ -124,6 +147,8 @@ function CreatePollSheet({
           question: question.trim(),
           method,
           options,
+          rank_limit: method === "ranked" ? rankLimitNumber : null,
+          ranked_veto_enabled: method === "ranked" && rankVeto,
           anonymous,
           reveal: anonymous ? reveal : "live",
           closes_at: closes ? new Date(closes).toISOString() : null,
@@ -132,6 +157,8 @@ function CreatePollSheet({
       setQuestion("");
       setOptionsText("");
       setAnonymous(false);
+      setRankLimit("2");
+      setRankVeto(false);
       setCloses("");
       onCreated();
     } catch (e) {
@@ -156,6 +183,30 @@ function CreatePollSheet({
       <Field label="Optionen" hint="Eine pro Zeile.">
         <Textarea value={optionsText} onChange={(e) => setOptionsText(e.target.value)} placeholder={"Option A\nOption B\nOption C"} />
       </Field>
+      {method === "ranked" && (
+        <div className="mb-3 rounded-xl border border-line bg-surface p-3">
+          <Field
+            label="Anzahl Prios"
+            hint={`${optionCount || 0} Optionen erkannt. Maximal ${rankMax}${rankVeto ? " mit Veto" : ""}.`}
+          >
+            <Select value={rankLimit} onChange={(e) => setRankLimit(e.target.value)}>
+              {Array.from({ length: rankMax }).map((_, i) => {
+                const n = i + 1;
+                return (
+                  <option key={n} value={n}>
+                    Top {n}
+                  </option>
+                );
+              })}
+            </Select>
+          </Field>
+          <Toggle checked={rankVeto} onChange={setRankVeto} label="Veto aktivieren" />
+          <p className="mt-2 text-[12px] leading-relaxed text-muted">
+            Bei Veto bekommen nicht priorisierte Optionen einen Veto-Abzug. Deshalb kannst du höchstens eine
+            Option weniger priorisieren als es Möglichkeiten gibt.
+          </p>
+        </div>
+      )}
       <Field label="Frist (optional)">
         <Input type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} />
       </Field>

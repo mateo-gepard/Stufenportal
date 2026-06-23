@@ -155,6 +155,8 @@ async function migrate(): Promise<void> {
       method                TEXT NOT NULL DEFAULT 'single',
       anonymous             INTEGER NOT NULL DEFAULT 0,
       reveal                TEXT NOT NULL DEFAULT 'live',
+      rank_limit            INTEGER,
+      ranked_veto_enabled   INTEGER NOT NULL DEFAULT 0,
       quorum                INTEGER,
       result_visibility_min INTEGER NOT NULL DEFAULT 5,
       tie_break             TEXT NOT NULL DEFAULT 'admin',
@@ -284,4 +286,13 @@ async function migrate(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_points_recipient ON point_events(device_id);
   `);
+
+  await addColumnIfMissing("polls", "rank_limit", "INTEGER");
+  await addColumnIfMissing("polls", "ranked_veto_enabled", "INTEGER NOT NULL DEFAULT 0");
+}
+
+async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {
+  const info = await raw().execute(`PRAGMA table_info(${table})`);
+  const exists = info.rows.some((row) => String(row.name) === column);
+  if (!exists) await raw().execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }

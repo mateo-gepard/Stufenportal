@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { getDb, batch } from "@/lib/db";
 import { requireAdmin, deviceId, voterHash } from "@/lib/auth";
 import { newId, nowIso, readJson, trimmed, str, int, oneOf } from "@/lib/util";
-import { autoClose } from "@/lib/polls";
+import { autoClose, rankedMaxPriorities } from "@/lib/polls";
 import { stufenlisteSnapshotStatements } from "@/lib/stufenliste";
 import type { PollMethod } from "@/lib/types";
 import type { InValue } from "@libsql/client";
@@ -36,6 +36,8 @@ export async function GET(req: Request) {
         question: p.question,
         method: p.method as PollMethod,
         anonymous: !!p.anonymous,
+        rank_limit: p.rank_limit ?? null,
+        ranked_veto_enabled: !!p.ranked_veto_enabled,
         status: p.status,
         closes_at: p.closes_at,
         total_ballots: total,
@@ -61,17 +63,29 @@ export async function POST(req: Request) {
   const id = newId();
   const method = oneOf<PollMethod>(body.method, METHODS, "single");
   const anonymous = body.anonymous ? 1 : 0;
+  const rankedVetoEnabled = method === "ranked" && body.ranked_veto_enabled ? 1 : 0;
+  const maxRankLimit = rankedMaxPriorities(labels.length, !!rankedVetoEnabled);
+  const requestedRankLimit = int(body.rank_limit);
+  const rankLimit = method === "ranked" ? requestedRankLimit ?? maxRankLimit : null;
+  if (method === "ranked" && (!rankLimit || rankLimit < 1 || rankLimit > maxRankLimit)) {
+    return NextResponse.json(
+      { error: `Anzahl Prios muss zwischen 1 und ${maxRankLimit} liegen.` },
+      { status: 400 }
+    );
+  }
 
   const stmts: { sql: string; args: InValue[] }[] = [
     {
-      sql: `INSERT INTO polls (id,question,method,anonymous,reveal,quorum,result_visibility_min,tie_break,poll_secret,closes_at,status,created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?, 'open', ?)`,
+      sql: `INSERT INTO polls (id,question,method,anonymous,reveal,rank_limit,ranked_veto_enabled,quorum,result_visibility_min,tie_break,poll_secret,closes_at,status,created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'open', ?)`,
       args: [
         id,
         question,
         method,
         anonymous,
         oneOf(body.reveal, ["live", "after_close"], "live"),
+        rankLimit,
+        rankedVetoEnabled,
         int(body.quorum),
         int(body.result_visibility_min) ?? 5,
         oneOf(body.tie_break, ["runoff", "random", "earliest", "admin"], "admin"),

@@ -48,7 +48,13 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       if (approval.length === 0) return setErr("Bitte mindestens eine Option."), setBusy(false);
       body = { option_ids: approval };
     } else {
-      if (ranking.length === 0) return setErr("Bitte eine Reihenfolge wählen."), setBusy(false);
+      const requiredRankLimit = rankLimitForPoll(poll);
+      if (ranking.length !== requiredRankLimit) {
+        return (
+          setErr(`Bitte genau ${requiredRankLimit} ${requiredRankLimit === 1 ? "Priorität" : "Prioritäten"} setzen.`),
+          setBusy(false)
+        );
+      }
       body = { ranking };
     }
     if (poll.anonymous) {
@@ -126,6 +132,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       <div className="mb-4 flex flex-wrap items-center gap-2 text-small text-muted">
         <PollStatusPill status={poll.status} />
         {poll.anonymous && <span>· anonym</span>}
+        {poll.method === "ranked" && <span>· Top {rankLimitForPoll(poll)}</span>}
+        {poll.ranked_veto_enabled && <span>· Veto</span>}
         <span>· {poll.total_ballots} {poll.total_ballots === 1 ? "Stimme" : "Stimmen"}</span>
         {poll.status === "open" && poll.closes_at && <span>· {until(poll.closes_at)}</span>}
       </div>
@@ -165,7 +173,13 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           )}
 
           {poll.method === "ranked" && (
-            <RankedPicker options={poll.options} ranking={ranking} setRanking={setRanking} />
+            <RankedPicker
+              options={poll.options}
+              ranking={ranking}
+              setRanking={setRanking}
+              rankLimit={rankLimitForPoll(poll)}
+              vetoEnabled={poll.ranked_veto_enabled}
+            />
           )}
 
           {poll.anonymous && (
@@ -308,16 +322,24 @@ function RankedPicker({
   options,
   ranking,
   setRanking,
+  rankLimit,
+  vetoEnabled,
 }: {
   options: { id: string; label: string }[];
   ranking: string[];
   setRanking: (r: string[]) => void;
+  rankLimit: number;
+  vetoEnabled: boolean;
 }) {
   const unranked = options.filter((o) => !ranking.includes(o.id));
   const labelOf = (id: string) => options.find((o) => o.id === id)?.label || "";
+  const limitReached = ranking.length >= rankLimit;
   return (
     <div>
-      <p className="mb-2 text-[12px] text-muted">Tippe in deiner Wunschreihenfolge — Platz 1 zuerst.</p>
+      <p className="mb-2 text-[12px] text-muted">
+        Setze genau {rankLimit} {rankLimit === 1 ? "Priorität" : "Prioritäten"} in Wunschreihenfolge.
+        {vetoEnabled ? " Nicht priorisierte Optionen zählen als Veto." : ""}
+      </p>
       {ranking.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">
           {ranking.map((id, i) => (
@@ -328,8 +350,8 @@ function RankedPicker({
               >
                 {i + 1}
               </span>
-              <span className="flex-1 text-[15px]">{labelOf(id)}</span>
-              <button onClick={() => setRanking(ranking.filter((x) => x !== id))} className="text-[12px] text-muted">
+            <span className="flex-1 text-[15px]">{labelOf(id)}</span>
+              <button type="button" onClick={() => setRanking(ranking.filter((x) => x !== id))} className="text-[12px] text-muted">
                 entfernen
               </button>
             </div>
@@ -340,16 +362,31 @@ function RankedPicker({
         {unranked.map((o) => (
           <button
             key={o.id}
-            onClick={() => setRanking([...ranking, o.id])}
-            className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 text-left"
+            type="button"
+            onClick={() => {
+              if (!limitReached) setRanking([...ranking, o.id]);
+            }}
+            disabled={limitReached}
+            className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 text-left disabled:opacity-55"
           >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-muted" style={{ borderColor: "var(--border)" }}>
               <IconPlus size={15} />
             </span>
-            <span className="text-[15px]">{o.label}</span>
+            <span className="flex-1 text-[15px]">{o.label}</span>
+            {limitReached && (
+              <span className="rounded-full bg-[color:var(--surface-2)] px-2 py-1 text-[11px] text-muted">
+                {vetoEnabled ? "Veto" : "nicht gewählt"}
+              </span>
+            )}
           </button>
         ))}
       </div>
     </div>
   );
+}
+
+function rankLimitForPoll(poll: PollDetail): number {
+  const max = Math.max(1, poll.options.length - (poll.ranked_veto_enabled ? 1 : 0));
+  if (!poll.rank_limit) return max;
+  return Math.min(Math.max(1, poll.rank_limit), max);
 }

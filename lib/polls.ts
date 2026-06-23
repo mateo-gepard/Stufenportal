@@ -8,11 +8,34 @@ interface PollRow {
   method: "single" | "approval" | "ranked";
   anonymous: number;
   reveal: "live" | "after_close";
+  rank_limit: number | null;
+  ranked_veto_enabled: number;
   quorum: number | null;
   result_visibility_min: number;
   poll_secret: string;
   closes_at: string | null;
   status: "open" | "closed" | "invalid";
+}
+
+export function rankedMaxPriorities(optionCount: number, vetoEnabled: boolean): number {
+  return Math.max(1, optionCount - (vetoEnabled ? 1 : 0));
+}
+
+export function normalizeRankLimit(
+  value: unknown,
+  optionCount: number,
+  vetoEnabled: boolean
+): number | null {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(numeric)) return null;
+  const rounded = Math.round(numeric);
+  if (rounded < 1) return null;
+  return Math.min(rounded, rankedMaxPriorities(optionCount, vetoEnabled));
 }
 
 /** Schließt offene Polls, deren Frist abgelaufen ist (serverseitig erzwungen). */
@@ -82,6 +105,8 @@ export async function buildPollDetail(
     method: p.method,
     anonymous: !!p.anonymous,
     reveal: p.reveal,
+    rank_limit: p.method === "ranked" ? normalizeRankLimit(p.rank_limit, options.length, !!p.ranked_veto_enabled) : null,
+    ranked_veto_enabled: p.method === "ranked" && !!p.ranked_veto_enabled,
     status: p.status,
     closes_at: p.closes_at,
     quorum: p.quorum,
@@ -120,25 +145,45 @@ async function computeResults(
       const items = await db
         .prepare("SELECT option_id, rank FROM vote_items WHERE ballot_id = ? ORDER BY rank")
         .all<{ option_id: string; rank: number | null }>(b.id);
-      const k = items.length;
-      items.forEach((it) => {
+      const rankedItems = items.filter((it) => (it.rank ?? 0) > 0);
+      const k = rankedItems.length;
+      rankedItems.forEach((it) => {
         const r = it.rank ?? k;
         values.set(it.option_id, (values.get(it.option_id) || 0) + (k - r + 1));
       });
+      if (p.ranked_veto_enabled) {
+        items
+          .filter((it) => it.rank === 0)
+          .forEach((it) => {
+            values.set(it.option_id, (values.get(it.option_id) || 0) - 1);
+          });
+      }
     }
   }
 
-  const sum = Array.from(values.values()).reduce((a, b) => a + b, 0);
-  const denom = p.method === "ranked" ? sum || 1 : total || 1;
+  const rawValues = Array.from(values.values());
+  const sum = rawValues.reduce((a, b) => a + b, 0);
+  let denom = total || 1;
+  if (p.method === "ranked") {
+    if (p.ranked_veto_enabled) {
+      denom = Math.max(1, ...rawValues);
+    } else {
+      denom = sum || 1;
+    }
+  }
 
   return options
     .map((o) => {
       const value = values.get(o.id) || 0;
+      const pct =
+        p.method === "ranked" && p.ranked_veto_enabled
+          ? Math.max(0, Math.round((value / denom) * 100))
+          : Math.round((value / denom) * 100);
       return {
         option_id: o.id,
         label: o.label,
         value,
-        pct: Math.round((value / denom) * 100),
+        pct,
       };
     })
     .sort((a, b) => b.value - a.value);

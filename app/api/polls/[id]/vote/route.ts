@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, tx } from "@/lib/db";
 import { deviceId, voterHash, isAdmin } from "@/lib/auth";
 import { newId, nowIso, readJson, trimmed } from "@/lib/util";
-import { autoClose, buildPollDetail } from "@/lib/polls";
+import { autoClose, buildPollDetail, normalizeRankLimit, rankedMaxPriorities } from "@/lib/polls";
 import { findRosterEntryForName } from "@/lib/stufenliste";
 
 export const runtime = "nodejs";
@@ -47,9 +47,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   } else {
     const ranking = Array.isArray(body.ranking) ? body.ranking.filter((o: unknown) => typeof o === "string") : [];
     const uniq = Array.from(new Set(ranking)) as string[];
+    const vetoEnabled = !!poll.ranked_veto_enabled;
+    const maxRankLimit = rankedMaxPriorities(validOptions.size, vetoEnabled);
+    const requiredRankLimit =
+      normalizeRankLimit(poll.rank_limit, validOptions.size, vetoEnabled) ?? (vetoEnabled ? maxRankLimit : null);
     if (uniq.length < 1 || uniq.some((o) => !validOptions.has(o)))
       return NextResponse.json({ error: "Ungültige Reihenfolge." }, { status: 400 });
+    if (uniq.length > maxRankLimit) {
+      return NextResponse.json({ error: `Bitte maximal ${maxRankLimit} Prioritäten setzen.` }, { status: 400 });
+    }
+    if (requiredRankLimit !== null && uniq.length !== requiredRankLimit) {
+      return NextResponse.json(
+        { error: `Bitte genau ${requiredRankLimit} ${requiredRankLimit === 1 ? "Priorität" : "Prioritäten"} setzen.` },
+        { status: 400 }
+      );
+    }
     items = uniq.map((o, i) => ({ option_id: o, rank: i + 1 }));
+    if (vetoEnabled) {
+      const ranked = new Set(uniq);
+      for (const optionId of validOptions) {
+        if (!ranked.has(optionId)) items.push({ option_id: optionId, rank: 0 });
+      }
+    }
   }
 
   const ballotId = newId();

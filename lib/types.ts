@@ -88,6 +88,8 @@ export interface PollDetail {
   method: PollMethod;
   anonymous: boolean;
   reveal: "live" | "after_close";
+  rank_limit: number | null;
+  ranked_veto_enabled: boolean;
   status: PollStatus;
   closes_at: string | null;
   quorum: number | null;
