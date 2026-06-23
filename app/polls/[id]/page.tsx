@@ -8,6 +8,7 @@ import { useApp } from "@/components/AppContext";
 import type { PollDetail } from "@/lib/types";
 import { Skeleton, PollStatusPill, Button, AdminDots, BottomSheet, SheetAction } from "@/components/ui";
 import { Field, Input } from "@/components/form";
+import { IconCheck, IconChevronLeft, IconPlay, IconPlus, IconStar, IconStop, IconTrash } from "@/components/icons";
 import { until, dateTime } from "@/lib/format";
 
 export default function PollDetailPage({ params }: { params: { id: string } }) {
@@ -23,6 +24,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   const [ranking, setRanking] = useState<string[]>([]);
   const [voterName, setVoterName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [flagBusy, setFlagBusy] = useState(false);
+  const [nameIssueSent, setNameIssueSent] = useState(false);
   const [err, setErr] = useState("");
 
   const load = useCallback(() => {
@@ -36,6 +39,7 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
     if (!poll) return;
     setBusy(true);
     setErr("");
+    setNameIssueSent(false);
     let body: Record<string, unknown> = {};
     if (poll.method === "single") {
       if (!single) return setErr("Bitte eine Option wählen."), setBusy(false);
@@ -60,6 +64,22 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       load();
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function flagNameIssue() {
+    if (!poll || !voterName.trim()) return;
+    setFlagBusy(true);
+    try {
+      await api(`/api/polls/${params.id}/name-issue`, {
+        method: "POST",
+        body: { voter_name: voterName.trim() },
+      });
+      setNameIssueSent(true);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setFlagBusy(false);
     }
   }
 
@@ -93,7 +113,10 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/polls" className="mb-2 inline-flex items-center gap-1 text-small text-muted">← Abstimmungen</Link>
+      <Link href="/polls" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
+        <IconChevronLeft size={15} />
+        Abstimmungen
+      </Link>
 
       <header className="mb-3 flex items-start justify-between gap-3">
         <h1 className="font-display text-h1 leading-tight">{poll.question}</h1>
@@ -147,13 +170,21 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
           {poll.anonymous && (
             <div className="mt-3 rounded-xl border border-line bg-surface p-3">
+              <div className="mb-3 rounded-lg bg-[color:var(--surface-2)] px-3 py-2.5 text-[12px] leading-relaxed text-muted">
+                Dein Name wird nur serverseitig mit der Stufenliste verglichen. Die Schreibweise ist egal:
+                Vorname, Nachname oder beides funktioniert, solange der Treffer eindeutig ist. Deine Auswahl
+                bleibt anonym und wird nicht mit deinem Namen angezeigt.
+              </div>
               <Field
                 label="Name zur Prüfung"
                 hint="Nur für den Abgleich mit der Stufenliste. Dein Name wird nicht angezeigt."
               >
                 <Input
                   value={voterName}
-                  onChange={(e) => setVoterName(e.target.value)}
+                  onChange={(e) => {
+                    setVoterName(e.target.value);
+                    setNameIssueSent(false);
+                  }}
                   placeholder="Vorname, Nachname oder beides"
                   autoComplete="off"
                 />
@@ -162,6 +193,21 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           )}
 
           {err && <p className="mt-3 text-small text-danger">{err}</p>}
+          {poll.anonymous && err === "Mit diesem Namen wurde schon abgestimmt." && (
+            <div className="mt-2 rounded-xl border border-line bg-surface p-3">
+              <p className="mb-2 text-[12px] text-muted">
+                Falls du sicher nicht abgestimmt hast, melde den Namenskonflikt. Das Sprecher-Team sieht dann
+                nur deinen eingegebenen Namen und die betroffene Abstimmung, nicht deine Auswahl.
+              </p>
+              {nameIssueSent ? (
+                <p className="text-small font-medium text-success">Meldung gespeichert.</p>
+              ) : (
+                <Button onClick={flagNameIssue} disabled={flagBusy || !voterName.trim()} variant="surface" full>
+                  {flagBusy ? "Melde…" : "Ich habe nicht abgestimmt"}
+                </Button>
+              )}
+            </div>
+          )}
           <Button onClick={vote} disabled={busy} full>
             {busy ? "Senden…" : "Stimme abgeben"}
           </Button>
@@ -178,7 +224,10 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           className="mb-5 rounded-xl px-4 py-3 text-small font-medium"
           style={{ color: "var(--success)", background: "color-mix(in srgb, var(--success) 12%, transparent)" }}
         >
-          ✓ Du hast abgestimmt. Danke!
+          <span className="inline-flex items-center gap-1.5">
+            <IconCheck size={15} />
+            Du hast abgestimmt. Danke!
+          </span>
         </div>
       )}
 
@@ -192,7 +241,7 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2 font-medium">
                     {i === 0 && winner && winner.value > 0 && poll.status !== "open" && (
-                      <span style={{ color: "var(--signal-text)" }}>★</span>
+                      <IconStar size={16} style={{ color: "var(--signal-text)" }} />
                     )}
                     <span className="truncate">{r.label}</span>
                   </span>
@@ -218,9 +267,9 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
       <BottomSheet open={sheet} onClose={() => setSheet(false)} title="Verwalten">
         <div className="space-y-1">
-          {poll.status === "open" && <SheetAction label="Vorzeitig schließen" icon="⏹" onClick={() => setStatus("closed")} />}
-          {poll.status !== "open" && <SheetAction label="Wieder öffnen" icon="▶" onClick={() => setStatus("open")} />}
-          <SheetAction label="In den Papierkorb" icon="🗑" danger onClick={del} />
+          {poll.status === "open" && <SheetAction label="Vorzeitig schließen" icon={<IconStop size={18} />} onClick={() => setStatus("closed")} />}
+          {poll.status !== "open" && <SheetAction label="Wieder öffnen" icon={<IconPlay size={18} />} onClick={() => setStatus("open")} />}
+          <SheetAction label="In den Papierkorb" icon={<IconTrash size={18} />} danger onClick={del} />
         </div>
       </BottomSheet>
     </div>
@@ -248,11 +297,7 @@ function OptionRow({
         className={`flex h-6 w-6 shrink-0 items-center justify-center border-2 ${control === "radio" ? "rounded-full" : "rounded-md"}`}
         style={{ borderColor: selected ? "var(--signal)" : "var(--border)", background: selected ? "var(--signal)" : "transparent" }}
       >
-        {selected && (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12.5 9 17.5 20 6.5" />
-          </svg>
-        )}
+        {selected && <IconCheck size={13} strokeWidth={3.2} style={{ color: "white" }} />}
       </span>
       <span className="text-[15px]">{label}</span>
     </button>
@@ -299,7 +344,7 @@ function RankedPicker({
             className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 text-left"
           >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-muted" style={{ borderColor: "var(--border)" }}>
-              +
+              <IconPlus size={15} />
             </span>
             <span className="text-[15px]">{o.label}</span>
           </button>

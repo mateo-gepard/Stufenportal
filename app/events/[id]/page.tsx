@@ -17,6 +17,7 @@ import {
   SheetAction,
 } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
+import { IconCheck, IconChevronLeft, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTrash } from "@/components/icons";
 import { relativeDay } from "@/lib/format";
 import Comments from "@/components/Comments";
 
@@ -89,7 +90,8 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   return (
     <div className="sp-in pb-6">
       <Link href="/events" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        ← Events
+        <IconChevronLeft size={15} />
+        Events
       </Link>
 
       <header className="mb-3 flex items-start justify-between gap-3">
@@ -129,11 +131,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                   background: m.done ? "var(--success)" : "transparent",
                 }}
               >
-                {m.done && (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 12.5 9 17.5 20 6.5" />
-                  </svg>
-                )}
+                {m.done && <IconCheck size={13} strokeWidth={3.2} style={{ color: "white" }} />}
               </button>
               <div className="min-w-0 flex-1">
                 <p className={`text-small ${m.done ? "text-muted line-through" : ""}`}>{m.title}</p>
@@ -153,7 +151,8 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
           <div className="mt-2 flex gap-2">
             <Input value={newMs} onChange={(e) => setNewMs(e.target.value)} placeholder="Neuer Meilenstein…" />
             <Button onClick={addMs} variant="surface" disabled={!newMs.trim()}>
-              +
+              <IconPlus size={17} />
+              <span className="sr-only">Meilenstein hinzufügen</span>
             </Button>
           </div>
         )}
@@ -176,7 +175,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       {/* Admin-Sheet */}
       <BottomSheet open={adminSheet} onClose={() => setAdminSheet(false)} title="Verwalten">
         <div className="space-y-1">
-          <SheetAction label="Bearbeiten" icon="✏︎" onClick={() => { setAdminSheet(false); setEditSheet(true); }} />
+          <SheetAction label="Bearbeiten" icon={<IconPencil size={18} />} onClick={() => { setAdminSheet(false); setEditSheet(true); }} />
           <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-wide text-muted">Status</p>
           {[
             ["idea", "Idee"],
@@ -185,10 +184,15 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
             ["done", "Erledigt"],
             ["cancelled", "Abgesagt"],
           ].map(([v, l]) => (
-            <SheetAction key={v} label={l} icon={ev.status === v ? "●" : "○"} onClick={() => setStatus(v)} />
+            <SheetAction
+              key={v}
+              label={l}
+              icon={ev.status === v ? <IconRadioOn size={18} /> : <IconRadioOff size={18} />}
+              onClick={() => setStatus(v)}
+            />
           ))}
           <div className="my-1 h-px bg-line" />
-          <SheetAction label="In den Papierkorb" icon="🗑" danger onClick={del} />
+          <SheetAction label="In den Papierkorb" icon={<IconTrash size={18} />} danger onClick={del} />
         </div>
       </BottomSheet>
 

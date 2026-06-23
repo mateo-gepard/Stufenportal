@@ -3,7 +3,7 @@ import { nowIso } from "./util";
 
 // Legt/aktualisiert ein Mitglied (Geräte-ID + Name) an, ohne die
 // Leaderboard-Einstellung zu verändern. Wird aufgerufen, wenn jemand
-// mit Namen aktiv wird (Eintragen, Einstellungen) → wird dadurch creditbar.
+// mit Namen aktiv wird (Eintragen, Einstellungen) -> wird dadurch creditbar.
 export async function upsertMember(deviceId: string, name: string): Promise<void> {
   const n = name.trim().slice(0, 40);
   if (!n || n.toLowerCase() === "anonym") return;

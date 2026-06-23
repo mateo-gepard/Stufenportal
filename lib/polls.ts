@@ -114,7 +114,7 @@ async function computeResults(
       .all<{ option_id: string; n: number }>(p.id);
     rows.forEach((r) => values.set(r.option_id, r.n));
   } else {
-    // Ranked → Borda: je Stimmzettel mit K Rängen gibt Rang r → (K - r + 1) Punkte.
+    // Ranked -> Borda: je Stimmzettel mit K Rängen gibt Rang r -> (K - r + 1) Punkte.
     const ballots = await db.prepare("SELECT id FROM ballots WHERE poll_id = ?").all<{ id: string }>(p.id);
     for (const b of ballots) {
       const items = await db

@@ -208,6 +208,18 @@ async function migrate(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_poll_roster_alias ON poll_roster_aliases(poll_id, normalized_alias);
 
+    CREATE TABLE IF NOT EXISTS anonymous_vote_name_flags (
+      id              TEXT PRIMARY KEY,
+      poll_id         TEXT NOT NULL,
+      device_id       TEXT NOT NULL,
+      voter_name      TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'open',
+      created_at      TEXT NOT NULL,
+      resolved_at     TEXT,
+      UNIQUE(poll_id, device_id, normalized_name)
+    );
+
     CREATE TABLE IF NOT EXISTS ledger (
       id          TEXT PRIMARY KEY,
       kind        TEXT NOT NULL,

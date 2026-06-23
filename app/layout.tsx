@@ -3,6 +3,7 @@ import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppContext";
 import BottomNav from "@/components/BottomNav";
+import Onboarding from "@/components/Onboarding";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
 const fraunces = Fraunces({
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppProvider>
           <main className="mx-auto min-h-screen max-w-screen-sm px-4 pt-3">{children}</main>
           <BottomNav />
+          <Onboarding />
         </AppProvider>
       </body>
     </html>

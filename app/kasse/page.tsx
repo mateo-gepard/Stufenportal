@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { LedgerEntry } from "@/lib/types";
 import { Card, Skeleton, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
 import { Field, Input, Select } from "@/components/form";
+import { IconArrowDown, IconArrowUp, IconChevronLeft, IconPlus, IconTrash } from "@/components/icons";
 import { money, date } from "@/lib/format";
 
 interface LedgerData {
@@ -35,10 +36,18 @@ export default function KassePage() {
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">← Mehr</Link>
+      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
+        <IconChevronLeft size={15} />
+        Mehr
+      </Link>
       <header className="mb-4 flex items-center justify-between">
         <h1 className="font-display text-display">Kasse</h1>
-        {admin && <Button onClick={() => setCreate(true)}>+ Buchung</Button>}
+        {admin && (
+          <Button onClick={() => setCreate(true)}>
+            <IconPlus size={17} />
+            Buchung
+          </Button>
+        )}
       </header>
 
       {!data ? (
@@ -50,8 +59,14 @@ export default function KassePage() {
             {money(data.balance)}
           </p>
           <div className="mt-3 flex justify-center gap-6 text-small text-muted">
-            <span className="tabular">＋ {money(data.income)}</span>
-            <span className="tabular">－ {money(data.expense)}</span>
+            <span className="tabular inline-flex items-center gap-1.5">
+              <IconArrowDown size={14} />
+              {money(data.income)}
+            </span>
+            <span className="tabular inline-flex items-center gap-1.5">
+              <IconArrowUp size={14} />
+              {money(data.expense)}
+            </span>
           </div>
         </Card>
       )}
@@ -67,7 +82,7 @@ export default function KassePage() {
                 background: e.kind === "income" ? "color-mix(in srgb, var(--success) 12%, transparent)" : "color-mix(in srgb, var(--danger) 12%, transparent)",
               }}
             >
-              {e.kind === "income" ? "↓" : "↑"}
+              {e.kind === "income" ? <IconArrowDown size={18} /> : <IconArrowUp size={18} />}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{e.description}</p>
@@ -77,7 +92,7 @@ export default function KassePage() {
               </p>
             </div>
             <span className="tabular shrink-0 font-medium" style={{ color: e.kind === "income" ? "var(--success)" : "var(--text)" }}>
-              {e.kind === "income" ? "+" : "−"}
+              {e.kind === "income" ? "+" : "-"}
               {money(e.amount)}
             </span>
             {admin && <AdminDots onClick={() => setSheetFor(e)} />}
@@ -100,7 +115,7 @@ export default function KassePage() {
             <p className="px-3 py-2 text-small text-muted">
               {sheetFor.description} · {money(sheetFor.amount)}
             </p>
-            <SheetAction label="In den Papierkorb" icon="🗑" danger onClick={() => del(sheetFor.id)} />
+            <SheetAction label="In den Papierkorb" icon={<IconTrash size={18} />} danger onClick={() => del(sheetFor.id)} />
           </div>
         )}
       </BottomSheet>

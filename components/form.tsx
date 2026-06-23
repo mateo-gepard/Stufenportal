@@ -47,7 +47,7 @@ export function Toggle({
       className="flex min-h-[48px] w-full items-center justify-between rounded-xl border border-line bg-[color:var(--bg)] px-3.5"
     >
       <span className="text-[15px]">{label}</span>
-      {/* Knopf als Flex-Element (kein absolute) → deterministischer Startpunkt links. */}
+      {/* Knopf als Flex-Element (kein absolute) -> deterministischer Startpunkt links. */}
       <span
         className="inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200"
         style={{ background: checked ? "var(--signal)" : "var(--surface-2)" }}

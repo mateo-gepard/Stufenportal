@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   // Push bei wichtig/dringend & veröffentlicht.
   if (status === "published" && (priority === "wichtig" || priority === "dringend")) {
     await broadcast({
-      title: priority === "dringend" ? "🔴 Dringend" : "Wichtig",
+      title: priority === "dringend" ? "Dringend" : "Wichtig",
       body: title,
       url: "/news",
     });

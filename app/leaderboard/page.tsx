@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { LeaderboardRow, MemberRow } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Select } from "@/components/form";
+import { IconChevronLeft, IconMedal, IconPlus } from "@/components/icons";
 
 export default function LeaderboardPage() {
   const { admin } = useApp();
@@ -20,14 +21,20 @@ export default function LeaderboardPage() {
   }, []);
   useEffect(load, [load]);
 
-  const medal = (rank: number) => (rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null);
-
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">← Mehr</Link>
+      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
+        <IconChevronLeft size={15} />
+        Mehr
+      </Link>
       <header className="mb-1 flex items-center justify-between">
         <h1 className="font-display text-display">Leaderboard</h1>
-        {admin && <Button onClick={() => setAward(true)}>+ Punkte</Button>}
+        {admin && (
+          <Button onClick={() => setAward(true)}>
+            <IconPlus size={17} />
+            Punkte
+          </Button>
+        )}
       </header>
       <p className="mb-4 text-small text-muted">Punkte fürs Mitmachen. Wer hier steht, hat sich freiwillig sichtbar gemacht.</p>
 
@@ -58,7 +65,7 @@ export default function LeaderboardPage() {
                 color: row.rank <= 3 ? "var(--signal-text)" : "var(--text-muted)",
               }}
             >
-              {medal(row.rank) || row.rank}
+              {row.rank <= 3 ? <IconMedal size={18} /> : row.rank}
             </span>
             <span className="flex-1 truncate font-medium">
               {row.name}

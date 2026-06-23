@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import type { TodayDigest } from "@/lib/types";
 import { Card, SectionLabel, MilestoneBar, SignalDot, SkeletonList } from "@/components/ui";
+import { IconCheck, IconSparkle } from "@/components/icons";
 import { until, relativeDay } from "@/lib/format";
 
 export default function TodayPage() {
@@ -119,7 +120,14 @@ export default function TodayPage() {
                             : { color: "white", background: "var(--signal)" }
                         }
                       >
-                        {p.voted ? "✓ Gewählt" : "Abstimmen"}
+                        {p.voted ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <IconCheck size={14} />
+                            Gewählt
+                          </span>
+                        ) : (
+                          "Abstimmen"
+                        )}
                       </span>
                     </Card>
                   </Link>
@@ -133,7 +141,10 @@ export default function TodayPage() {
             data.upcoming.length === 0 &&
             data.openPolls.length === 0 && (
               <Card className="mt-6 text-center text-muted">
-                <p className="py-6">Nichts Dringendes. Alles im Griff. ✨</p>
+                <div className="flex flex-col items-center gap-2 py-6">
+                  <IconSparkle size={22} />
+                  <p>Nichts Dringendes. Alles im Griff.</p>
+                </div>
               </Card>
             )}
         </>

@@ -5,12 +5,22 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { Card, SkeletonList, Button } from "@/components/ui";
+import { IconChevronLeft, IconChevronRight, IconLock } from "@/components/icons";
+import { dateTime } from "@/lib/format";
 
 interface TrashItem {
   id: string;
   title: string;
   deleted_at: string;
   type: "event" | "news" | "poll" | "ledger" | "abizeitung";
+}
+
+interface VoteIssue {
+  id: string;
+  poll_id: string;
+  question: string;
+  voter_name: string;
+  created_at: string;
 }
 
 const typeLabel: Record<TrashItem["type"], string> = {
@@ -24,12 +34,16 @@ const typeLabel: Record<TrashItem["type"], string> = {
 export default function AdminPage() {
   const { admin, ready } = useApp();
   const [items, setItems] = useState<TrashItem[] | null>(null);
+  const [issues, setIssues] = useState<VoteIssue[] | null>(null);
 
   const load = useCallback(() => {
     if (!admin) return;
     (api("/api/admin/trash") as Promise<{ items: TrashItem[] }>)
       .then((d) => setItems(d.items))
       .catch(() => setItems([]));
+    (api("/api/admin/vote-issues") as Promise<{ issues: VoteIssue[] }>)
+      .then((d) => setIssues(d.issues))
+      .catch(() => setIssues([]));
   }, [admin]);
   useEffect(load, [load]);
 
@@ -39,18 +53,29 @@ export default function AdminPage() {
     load();
   }
 
+  async function resolveIssue(id: string) {
+    await api("/api/admin/vote-issues", { method: "PATCH", body: { id } });
+    load();
+  }
+
   if (ready && !admin)
     return (
       <div className="sp-in pt-10 text-center text-muted">
-        <p className="mb-2 text-2xl">🔒</p>
+        <IconLock size={26} className="mx-auto mb-2" />
         <p>Nur im Sprecher-Modus.</p>
-        <Link href="/more" className="mt-3 inline-block text-signal-text">Zu „Mehr" → freischalten</Link>
+        <Link href="/more" className="mt-3 inline-flex items-center justify-center gap-1 text-signal-text">
+          Zu „Mehr" freischalten
+          <IconChevronRight size={15} />
+        </Link>
       </div>
     );
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">← Mehr</Link>
+      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
+        <IconChevronLeft size={15} />
+        Mehr
+      </Link>
       <h1 className="mb-4 font-display text-display">Verwaltung</h1>
 
       <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Schnellzugriff</h2>
@@ -61,6 +86,31 @@ export default function AdminPage() {
         <QuickLink href="/abizeitung" label="Abizeitung" />
         <QuickLink href="/kasse" label="Kasse" />
       </div>
+
+      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Abstimmungsprobleme</h2>
+      {!issues && <SkeletonList rows={1} />}
+      {issues && issues.length === 0 && (
+        <Card className="mb-6 text-center text-muted">
+          <p className="py-4">Keine offenen Meldungen.</p>
+        </Card>
+      )}
+      {issues && issues.length > 0 && (
+        <div className="mb-6 flex flex-col gap-2">
+          {issues.map((issue) => (
+            <Card key={issue.id}>
+              <div className="mb-2">
+                <p className="font-medium">{issue.voter_name}</p>
+                <p className="text-[12px] text-muted">
+                  {issue.question} · {dateTime(issue.created_at)}
+                </p>
+              </div>
+              <Button onClick={() => resolveIssue(issue.id)} variant="surface" full>
+                Als erledigt markieren
+              </Button>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Papierkorb</h2>
       {!items && <SkeletonList rows={2} />}

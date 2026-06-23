@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { AbizeitungEntry } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
 import { Field, Input, Textarea } from "@/components/form";
+import { IconChevronLeft, IconPlus, IconTrash } from "@/components/icons";
 import { dateTime } from "@/lib/format";
 
 export default function AbizeitungPage() {
@@ -31,11 +32,15 @@ export default function AbizeitungPage() {
   return (
     <div className="sp-in pb-6">
       <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        ← Mehr
+        <IconChevronLeft size={15} />
+        Mehr
       </Link>
       <header className="mb-4 flex items-center justify-between">
         <h1 className="font-display text-display">Abizeitung</h1>
-        <Button onClick={() => setCreate(true)}>+ Beitrag</Button>
+        <Button onClick={() => setCreate(true)}>
+          <IconPlus size={17} />
+          Beitrag
+        </Button>
       </header>
 
       <p className="mb-4 text-small text-muted">
@@ -95,7 +100,7 @@ export default function AbizeitungPage() {
             <p className="px-3 py-2 text-small text-muted">
               {sheetFor.quote ? "Zitat" : "Bild"} von {sheetFor.author_name}
             </p>
-            <SheetAction label="In den Papierkorb" icon="🗑" danger onClick={() => del(sheetFor)} />
+            <SheetAction label="In den Papierkorb" icon={<IconTrash size={18} />} danger onClick={() => del(sheetFor)} />
           </div>
         )}
       </BottomSheet>

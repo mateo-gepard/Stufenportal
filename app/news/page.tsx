@@ -16,6 +16,7 @@ import {
   SheetAction,
 } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
+import { IconBookmark, IconPencil, IconRadioOff, IconRadioOn, IconTrash } from "@/components/icons";
 import { dateTime } from "@/lib/format";
 
 export default function NewsPage() {
@@ -94,22 +95,32 @@ export default function NewsPage() {
       <BottomSheet open={!!sheetFor} onClose={() => setSheetFor(null)} title="Verwalten">
         {sheetFor && (
           <div className="space-y-1">
-            <SheetAction label="Bearbeiten" icon="✏︎" onClick={() => { setEditing(sheetFor); setSheetFor(null); }} />
+            <SheetAction label="Bearbeiten" icon={<IconPencil size={18} />} onClick={() => { setEditing(sheetFor); setSheetFor(null); }} />
             <SheetAction
               label={sheetFor.featured ? "Von Heute entfernen" : "Auf Heute befördern"}
-              icon="📌"
+              icon={<IconBookmark size={18} />}
               onClick={() => patch(sheetFor.id, { featured: !sheetFor.featured })}
             />
             <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-wide text-muted">Priorität</p>
             {(["normal", "wichtig", "dringend"] as Priority[]).map((p) => (
-              <SheetAction key={p} label={prioLabel[p]} icon={sheetFor.priority === p ? "●" : "○"} onClick={() => patch(sheetFor.id, { priority: p })} />
+              <SheetAction
+                key={p}
+                label={prioLabel[p]}
+                icon={sheetFor.priority === p ? <IconRadioOn size={18} /> : <IconRadioOff size={18} />}
+                onClick={() => patch(sheetFor.id, { priority: p })}
+              />
             ))}
             <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-wide text-muted">Sichtbarkeit</p>
             {(["published", "hidden", "draft", "archived"] as NewsStatus[]).map((s) => (
-              <SheetAction key={s} label={statusLabel[s]} icon={sheetFor.status === s ? "●" : "○"} onClick={() => patch(sheetFor.id, { status: s })} />
+              <SheetAction
+                key={s}
+                label={statusLabel[s]}
+                icon={sheetFor.status === s ? <IconRadioOn size={18} /> : <IconRadioOff size={18} />}
+                onClick={() => patch(sheetFor.id, { status: s })}
+              />
             ))}
             <div className="my-1 h-px bg-line" />
-            <SheetAction label="In den Papierkorb" icon="🗑" danger onClick={() => del(sheetFor.id)} />
+            <SheetAction label="In den Papierkorb" icon={<IconTrash size={18} />} danger onClick={() => del(sheetFor.id)} />
           </div>
         )}
       </BottomSheet>
@@ -185,7 +196,7 @@ function NewsEditor({
           </Field>
         </div>
         <div className="flex-1">
-          <Field label="Priorität" hint="Wichtig/dringend → Push.">
+          <Field label="Priorität" hint="Wichtig/dringend löst Push aus.">
             <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
               <option value="normal">Normal</option>
               <option value="wichtig">Wichtig</option>

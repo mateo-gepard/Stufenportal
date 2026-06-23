@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { PollMethod, PollStatus } from "@/lib/types";
 import { Card, PollStatusPill, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Textarea, Select, Toggle } from "@/components/form";
+import { IconCheck } from "@/components/icons";
 import { until } from "@/lib/format";
 
 interface PollListItem {
@@ -68,7 +69,10 @@ export default function PollsPage() {
                 {p.status === "open" && p.closes_at && <span>{until(p.closes_at)}</span>}
               </div>
               {p.voted && p.status === "open" && (
-                <p className="mt-1.5 text-[12px] font-medium text-success">✓ Du hast abgestimmt</p>
+                <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-success">
+                  <IconCheck size={13} />
+                  Du hast abgestimmt
+                </p>
               )}
             </Card>
           </Link>

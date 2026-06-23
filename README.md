@@ -40,7 +40,7 @@ Erst dann erscheinen „+ Neu", die `⋯`-Aktionen, Abhaken, Befördern, Sichtba
 
 ### Datenschutz-Eigenschaften (umgesetzt)
 
-- Anonyme Polls speichern **keinen** `user_id`/Geräte-Bezug. Neue anonyme Polls prüfen serverseitig gegen eine poll-eigene Stufenliste: Name vorhanden + noch nicht benutzt → Stimme wird angenommen; sonst abgelehnt. In `ballots` landet nur ein HMAC auf die poll-eigene Listen-ID, nicht der eingegebene Name. Der Name taucht in keiner API-Antwort auf.
+- Anonyme Polls speichern **keinen** `user_id`/Geräte-Bezug. Neue anonyme Polls prüfen serverseitig gegen eine poll-eigene Stufenliste: Name vorhanden + noch nicht benutzt → Stimme wird angenommen; sonst abgelehnt. In `ballots` landet nur ein HMAC auf die poll-eigene Listen-ID, nicht der eingegebene Name. Der Name taucht in keiner API-Antwort auf. Wenn ein Name fälschlich als benutzt erscheint, kann der Konflikt gemeldet und in der Verwaltung geprüft werden.
 - Soft-Delete überall (`deleted_at`), nichts wird hart entfernt.
 - Push läuft selbst gehostet über VAPID (web-push), keine Drittanbieter.
 

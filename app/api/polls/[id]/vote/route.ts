@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const validOptions = new Set(optRows.map((o) => o.id));
 
   const body = await readJson(req);
-  // Auswahl je Methode normalisieren → [{option_id, rank}]
+  // Auswahl je Methode normalisieren -> [{option_id, rank}]
   let items: { option_id: string; rank: number | null }[] = [];
   if (poll.method === "single") {
     const opt = typeof body.option_id === "string" ? body.option_id : "";

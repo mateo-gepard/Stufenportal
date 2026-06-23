@@ -1,11 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { Card, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Toggle } from "@/components/form";
+import {
+  IconCheck,
+  IconChevronRight,
+  IconEuro,
+  IconHome,
+  IconMedal,
+  IconMegaphone,
+  IconMoon,
+  IconPencil,
+  IconSliders,
+  IconSun,
+} from "@/components/icons";
 import type { Me } from "@/lib/types";
 
 export default function MorePage() {
@@ -59,7 +71,7 @@ export default function MorePage() {
       else setMe((m) => (m ? { ...m, show_on_leaderboard: false } : m));
       return;
     }
-    // Einschalten: Name vorhanden → sofort speichern, sonst Feld zeigen.
+    // Einschalten: Name vorhanden -> sofort speichern, sonst Feld zeigen.
     if (name.trim()) saveLb(true);
     else {
       setMe((m) => (m ? { ...m, show_on_leaderboard: true } : m));
@@ -101,10 +113,14 @@ export default function MorePage() {
         applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
       });
       await api("/api/push/subscribe", { method: "POST", body: { subscription: sub.toJSON() } });
-      setPushState("✓ Push aktiviert.");
+      setPushState("Push aktiviert.");
     } catch (e) {
       setPushState("Fehler: " + (e as Error).message);
     }
+  }
+
+  function showOnboarding() {
+    window.dispatchEvent(new Event("sp:show-onboarding"));
   }
 
   return (
@@ -112,11 +128,11 @@ export default function MorePage() {
       <h1 className="mb-4 font-display text-display">Mehr</h1>
 
       <div className="flex flex-col gap-2.5">
-        <NavRow href="/leaderboard" label="Leaderboard" sub="Wer macht viel für die Stufe" icon="★" />
-        <NavRow href="/abizeitung" label="Abizeitung" sub="Zitate & Bilder sammeln" icon="✎" />
-        <NavRow href="/kasse" label="Kasse" sub="Kassenstand & Kassenbuch" icon="€" />
-        <NavRow href="/news" label="News" sub="Alle Ankündigungen" icon="✦" />
-        {admin && <NavRow href="/admin" label="Verwaltung" sub="Übersicht & Papierkorb" icon="⚙︎" accent />}
+        <NavRow href="/leaderboard" label="Leaderboard" sub="Wer macht viel für die Stufe" icon={<IconMedal size={20} />} />
+        <NavRow href="/abizeitung" label="Abizeitung" sub="Zitate & Bilder sammeln" icon={<IconPencil size={20} />} />
+        <NavRow href="/kasse" label="Kasse" sub="Kassenstand & Kassenbuch" icon={<IconEuro size={20} />} />
+        <NavRow href="/news" label="News" sub="Alle Ankündigungen" icon={<IconMegaphone size={20} />} />
+        {admin && <NavRow href="/admin" label="Verwaltung" sub="Übersicht & Papierkorb" icon={<IconSliders size={20} />} accent />}
       </div>
 
       {/* Leaderboard-Sichtbarkeit (opt-in, default aus) */}
@@ -153,7 +169,12 @@ export default function MorePage() {
         </div>
         <Button onClick={enablePush} variant="surface">Aktivieren</Button>
       </Card>
-      {pushState && <p className="mt-1.5 px-1 text-[12px] text-muted">{pushState}</p>}
+      {pushState && (
+        <p className="mt-1.5 inline-flex items-center gap-1.5 px-1 text-[12px] text-muted">
+          {pushState === "Push aktiviert." && <IconCheck size={13} />}
+          {pushState}
+        </p>
+      )}
 
       <h2 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Darstellung</h2>
       <Card className="flex items-center justify-between" onClick={toggleTheme}>
@@ -161,7 +182,21 @@ export default function MorePage() {
           <p className="font-medium">{theme === "dark" ? "Dunkel" : "Hell"}</p>
           <p className="text-[12px] text-muted">Tippen zum Wechseln</p>
         </div>
-        <span className="text-2xl">{theme === "dark" ? "🌙" : "☀️"}</span>
+        <span className="text-muted">{theme === "dark" ? <IconMoon size={22} /> : <IconSun size={22} />}</span>
+      </Card>
+
+      <h2 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Einführung</h2>
+      <Card className="flex items-center justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+            <IconHome size={20} />
+          </span>
+          <div className="min-w-0">
+            <p className="font-medium">Onboarding ansehen</p>
+            <p className="truncate text-[12px] text-muted">Heute, Events, Abstimmungen und Mehr.</p>
+          </div>
+        </div>
+        <Button onClick={showOnboarding} variant="surface">Starten</Button>
       </Card>
 
       <h2 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Sprecher-Modus</h2>
@@ -186,7 +221,7 @@ export default function MorePage() {
       <p className="mt-8 px-1 text-[12px] leading-relaxed text-muted">
         Keine Anmeldung, kein Passwort, keine Mail. Deinen Namen gibst du nur dort ein, wo er gebraucht wird —
         beim Eintragen oder Kommentieren. Das Leaderboard ist freiwillig und standardmäßig aus. Anonyme
-        Abstimmungen speichern keinerlei Identität.
+        Abstimmungen prüfen deinen Namen nur gegen die Stufenliste; deine Auswahl bleibt anonym.
       </p>
 
       <BottomSheet open={unlockOpen} onClose={() => setUnlockOpen(false)} title="Sprecher-Modus freischalten">
@@ -206,7 +241,7 @@ export default function MorePage() {
   );
 }
 
-function NavRow({ href, label, sub, icon, accent }: { href: string; label: string; sub: string; icon: string; accent?: boolean }) {
+function NavRow({ href, label, sub, icon, accent }: { href: string; label: string; sub: string; icon: ReactNode; accent?: boolean }) {
   return (
     <Link href={href}>
       <Card className="flex items-center gap-3.5">
@@ -223,7 +258,9 @@ function NavRow({ href, label, sub, icon, accent }: { href: string; label: strin
           <p className="font-medium">{label}</p>
           <p className="text-[12px] text-muted">{sub}</p>
         </div>
-        <span className="text-muted">›</span>
+        <span className="text-muted">
+          <IconChevronRight size={17} />
+        </span>
       </Card>
     </Link>
   );
