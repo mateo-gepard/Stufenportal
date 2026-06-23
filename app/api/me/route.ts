@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { deviceId } from "@/lib/auth";
 import { nowIso, readJson, trimmed } from "@/lib/util";
-import { upsertMember, pointsFor } from "@/lib/members";
+import { pointsFor } from "@/lib/members";
 import type { Me } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -38,10 +38,15 @@ export async function POST(req: Request) {
   const body = await readJson(req);
   const name = trimmed(body.name).slice(0, 40);
   const show = body.show_on_leaderboard ? 1 : 0;
-  if (!name) return NextResponse.json({ error: "Name fehlt." }, { status: 400 });
 
   const db = getDb();
   const now = nowIso();
+  if (!name) {
+    if (show) return NextResponse.json({ error: "Name fehlt." }, { status: 400 });
+    await db.prepare("UPDATE members SET show_on_leaderboard = 0, updated_at = ? WHERE device_id = ?").run(now, device);
+    return NextResponse.json({ ok: true });
+  }
+
   await db
     .prepare(
       `INSERT INTO members (device_id, name, show_on_leaderboard, created_at, updated_at)

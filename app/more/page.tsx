@@ -30,7 +30,9 @@ export default function MorePage() {
   // Lokale Identität (kein Konto): Name nur fürs Leaderboard, opt-in.
   const [me, setMe] = useState<Me | null>(null);
   const [name, setName] = useState("");
+  const [lbEditorOpen, setLbEditorOpen] = useState(false);
   const [lbErr, setLbErr] = useState("");
+  const [lbSaved, setLbSaved] = useState("");
   const [lbBusy, setLbBusy] = useState(false);
 
   useEffect(() => {
@@ -38,25 +40,33 @@ export default function MorePage() {
       .then((m) => {
         setMe(m);
         setName(m.name || localStorage.getItem("sp_name") || "");
+        setLbEditorOpen(false);
       })
       .catch(() => setMe({ name: "", show_on_leaderboard: false, points: 0, history: [] }));
   }, []);
 
   const show = !!me?.show_on_leaderboard;
+  const showLbEditor = show || lbEditorOpen;
 
   async function saveLb(on: boolean) {
     const nm = name.trim();
     if (on && !nm) {
       setLbErr("Gib zuerst einen Namen ein.");
+      setLbSaved("");
+      setLbEditorOpen(true);
       return;
     }
     setLbBusy(true);
     setLbErr("");
+    setLbSaved("");
     try {
       await api("/api/me", { method: "POST", body: { name: nm || me?.name || "", show_on_leaderboard: on } });
       if (nm) localStorage.setItem("sp_name", nm);
       const fresh = (await api("/api/me")) as Me;
       setMe(fresh);
+      setName(fresh.name || nm);
+      setLbEditorOpen(!!fresh.show_on_leaderboard);
+      setLbSaved(on ? "Du bist jetzt auf dem Leaderboard sichtbar." : "Du bist nicht mehr auf dem Leaderboard sichtbar.");
     } catch (e) {
       setLbErr((e as Error).message);
     } finally {
@@ -68,13 +78,19 @@ export default function MorePage() {
     if (!next) {
       // Ausschalten: nur speichern, wenn überhaupt ein Name existiert.
       if (me?.name || name.trim()) saveLb(false);
-      else setMe((m) => (m ? { ...m, show_on_leaderboard: false } : m));
+      else {
+        setMe((m) => (m ? { ...m, show_on_leaderboard: false } : m));
+        setLbEditorOpen(false);
+        setLbErr("");
+        setLbSaved("");
+      }
       return;
     }
     // Einschalten: Name vorhanden -> sofort speichern, sonst Feld zeigen.
     if (name.trim()) saveLb(true);
     else {
-      setMe((m) => (m ? { ...m, show_on_leaderboard: true } : m));
+      setLbEditorOpen(true);
+      setLbSaved("");
       setLbErr("Gib einen Namen ein und tippe auf Speichern.");
     }
   }
@@ -139,18 +155,24 @@ export default function MorePage() {
       <h2 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Leaderboard</h2>
       <Card>
         <Toggle checked={show} onChange={onToggleLb} label="Auf dem Leaderboard erscheinen" />
-        {show && (
+        {showLbEditor && (
           <div className="mt-2.5">
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setLbErr("");
+                setLbSaved("");
+              }}
               placeholder="Angezeigter Name"
               maxLength={40}
             />
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-[12px] text-muted">So erscheinst du im Leaderboard.</span>
+              <span className="text-[12px] text-muted">
+                {show ? "So erscheinst du im Leaderboard." : "Speichern macht dich sichtbar."}
+              </span>
               <Button onClick={() => saveLb(true)} disabled={lbBusy} variant="surface">
-                Speichern
+                {show ? "Speichern" : "Sichtbar machen"}
               </Button>
             </div>
           </div>
@@ -158,6 +180,7 @@ export default function MorePage() {
         <p className="mt-2.5 text-[12px] text-muted">
           {me ? `Du hast ${me.points} ${me.points === 1 ? "Punkt" : "Punkte"}.` : ""}
         </p>
+        {lbSaved && <p className="mt-1 text-[12px] text-success">{lbSaved}</p>}
         {lbErr && <p className="mt-1 text-[12px] text-danger">{lbErr}</p>}
       </Card>
 
