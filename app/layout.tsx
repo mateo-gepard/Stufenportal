@@ -17,7 +17,9 @@ export const metadata: Metadata = {
   title: "Stufenportal",
   description: "Selbstorganisation der Stufe — Events, News, Abstimmungen, Kasse.",
   manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Stufe" },
+  other: { "mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {

@@ -292,7 +292,11 @@ async function migrate(): Promise<void> {
 }
 
 async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {
-  const info = await raw().execute(`PRAGMA table_info(${table})`);
-  const exists = info.rows.some((row) => String(row.name) === column);
-  if (!exists) await raw().execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  try {
+    await raw().execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (e) {
+    const msg = String((e as Error).message || "");
+    if (/duplicate column|already exists/i.test(msg)) return;
+    throw e;
+  }
 }
