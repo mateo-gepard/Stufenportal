@@ -47,6 +47,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   } else {
     const ranking = Array.isArray(body.ranking) ? body.ranking.filter((o: unknown) => typeof o === "string") : [];
     const uniq = Array.from(new Set(ranking)) as string[];
+    const vetoOption = typeof body.veto_option_id === "string" ? body.veto_option_id : "";
     const vetoEnabled = !!poll.ranked_veto_enabled;
     const maxRankLimit = rankedMaxPriorities(validOptions.size, vetoEnabled);
     const requiredRankLimit =
@@ -64,10 +65,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
     items = uniq.map((o, i) => ({ option_id: o, rank: i + 1 }));
     if (vetoEnabled) {
-      const ranked = new Set(uniq);
-      for (const optionId of validOptions) {
-        if (!ranked.has(optionId)) items.push({ option_id: optionId, rank: 0 });
+      if (!validOptions.has(vetoOption)) {
+        return NextResponse.json({ error: "Bitte ein Veto wählen." }, { status: 400 });
       }
+      if (uniq.includes(vetoOption)) {
+        return NextResponse.json({ error: "Veto darf nicht gleichzeitig priorisiert sein." }, { status: 400 });
+      }
+      items.push({ option_id: vetoOption, rank: 0 });
     }
   }
 

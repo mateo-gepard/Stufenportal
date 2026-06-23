@@ -80,6 +80,7 @@ export interface PollResultRow {
   label: string;
   value: number; // Stimmen bzw. Borda-Punkte
   pct: number;
+  veto_count?: number;
 }
 
 export interface PollDetail {

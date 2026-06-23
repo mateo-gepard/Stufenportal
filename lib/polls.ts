@@ -127,7 +127,9 @@ async function computeResults(
 ): Promise<PollResultRow[]> {
   const db = getDb();
   const values = new Map<string, number>();
+  const vetoCounts = new Map<string, number>();
   options.forEach((o) => values.set(o.id, 0));
+  options.forEach((o) => vetoCounts.set(o.id, 0));
 
   if (p.method === "single" || p.method === "approval") {
     const rows = await db
@@ -155,7 +157,7 @@ async function computeResults(
         items
           .filter((it) => it.rank === 0)
           .forEach((it) => {
-            values.set(it.option_id, (values.get(it.option_id) || 0) - 1);
+            vetoCounts.set(it.option_id, (vetoCounts.get(it.option_id) || 0) + 1);
           });
       }
     }
@@ -163,27 +165,17 @@ async function computeResults(
 
   const rawValues = Array.from(values.values());
   const sum = rawValues.reduce((a, b) => a + b, 0);
-  let denom = total || 1;
-  if (p.method === "ranked") {
-    if (p.ranked_veto_enabled) {
-      denom = Math.max(1, ...rawValues);
-    } else {
-      denom = sum || 1;
-    }
-  }
+  const denom = p.method === "ranked" ? sum || 1 : total || 1;
 
   return options
     .map((o) => {
       const value = values.get(o.id) || 0;
-      const pct =
-        p.method === "ranked" && p.ranked_veto_enabled
-          ? Math.max(0, Math.round((value / denom) * 100))
-          : Math.round((value / denom) * 100);
       return {
         option_id: o.id,
         label: o.label,
         value,
-        pct,
+        pct: Math.round((value / denom) * 100),
+        veto_count: p.ranked_veto_enabled ? vetoCounts.get(o.id) || 0 : undefined,
       };
     })
     .sort((a, b) => b.value - a.value);

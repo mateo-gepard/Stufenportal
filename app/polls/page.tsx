@@ -202,8 +202,8 @@ function CreatePollSheet({
           </Field>
           <Toggle checked={rankVeto} onChange={setRankVeto} label="Veto aktivieren" />
           <p className="mt-2 text-[12px] leading-relaxed text-muted">
-            Bei Veto bekommen nicht priorisierte Optionen einen Veto-Abzug. Deshalb kannst du höchstens eine
-            Option weniger priorisieren als es Möglichkeiten gibt.
+            Bei Veto wählt jede Person zusätzlich genau eine Option als Veto. Die Vetos werden separat gezählt
+            und nicht von den Punkten abgezogen.
           </p>
         </div>
       )}

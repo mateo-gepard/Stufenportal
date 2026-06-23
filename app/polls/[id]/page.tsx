@@ -22,6 +22,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   const [single, setSingle] = useState("");
   const [approval, setApproval] = useState<string[]>([]);
   const [ranking, setRanking] = useState<string[]>([]);
+  const [veto, setVeto] = useState("");
+  const [resultsExpanded, setResultsExpanded] = useState(false);
   const [voterName, setVoterName] = useState("");
   const [busy, setBusy] = useState(false);
   const [flagBusy, setFlagBusy] = useState(false);
@@ -34,6 +36,9 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       .catch(() => setNotFound(true));
   }, [params.id]);
   useEffect(load, [load]);
+  useEffect(() => {
+    setResultsExpanded(false);
+  }, [params.id]);
 
   async function vote() {
     if (!poll) return;
@@ -55,7 +60,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           setBusy(false)
         );
       }
-      body = { ranking };
+      if (poll.ranked_veto_enabled && !veto) return setErr("Bitte ein Veto wählen."), setBusy(false);
+      body = poll.ranked_veto_enabled ? { ranking, veto_option_id: veto } : { ranking };
     }
     if (poll.anonymous) {
       if (!voterName.trim()) return setErr("Bitte gib deinen Namen zur Prüfung ein."), setBusy(false);
@@ -64,6 +70,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
     try {
       const d = (await api(`/api/polls/${params.id}/vote`, { method: "POST", body })) as { poll: PollDetail };
       setPoll(d.poll);
+      setRanking([]);
+      setVeto("");
       setVoterName("");
     } catch (e) {
       setErr((e as Error).message);
@@ -116,6 +124,9 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
   const canVote = poll.status === "open" && !poll.voted;
   const winner = poll.results && poll.results.length > 0 ? poll.results[0] : null;
+  const visibleResults = poll.results ? (resultsExpanded ? poll.results : poll.results.slice(0, 3)) : null;
+  const resultCount = poll.results?.length ?? 0;
+  const hasMoreResults = resultCount > 3;
 
   return (
     <div className="sp-in pb-6">
@@ -177,6 +188,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
               options={poll.options}
               ranking={ranking}
               setRanking={setRanking}
+              veto={veto}
+              setVeto={setVeto}
               rankLimit={rankLimitForPoll(poll)}
               vetoEnabled={poll.ranked_veto_enabled}
             />
@@ -248,9 +261,9 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       {/* Ergebnis */}
       <section>
         <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Ergebnis</h2>
-        {poll.results ? (
+        {visibleResults ? (
           <div className="flex flex-col gap-2.5">
-            {poll.results.map((r, i) => (
+            {visibleResults.map((r, i) => (
               <div key={r.option_id} className="rounded-lg border border-line bg-surface p-3">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2 font-medium">
@@ -260,7 +273,9 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
                     <span className="truncate">{r.label}</span>
                   </span>
                   <span className="tabular shrink-0 text-small text-muted">
-                    {poll.method === "ranked" ? `${r.value} Pkt` : `${r.value} · ${r.pct}%`}
+                    {poll.method === "ranked"
+                      ? `${r.value} Pkt${poll.ranked_veto_enabled ? ` · ${vetoLabel(r.veto_count ?? 0)}` : ""}`
+                      : `${r.value} · ${r.pct}%`}
                   </span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
@@ -271,6 +286,11 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
             ))}
+            {hasMoreResults && (
+              <Button onClick={() => setResultsExpanded((v) => !v)} variant="surface" full>
+                {resultsExpanded ? "Nur Top 3 anzeigen" : `Alle ${resultCount} anzeigen`}
+              </Button>
+            )}
           </div>
         ) : (
           <p className="rounded-lg border border-line bg-surface px-4 py-6 text-center text-small text-muted">
@@ -322,12 +342,16 @@ function RankedPicker({
   options,
   ranking,
   setRanking,
+  veto,
+  setVeto,
   rankLimit,
   vetoEnabled,
 }: {
   options: { id: string; label: string }[];
   ranking: string[];
   setRanking: (r: string[]) => void;
+  veto: string;
+  setVeto: (id: string) => void;
   rankLimit: number;
   vetoEnabled: boolean;
 }) {
@@ -338,7 +362,7 @@ function RankedPicker({
     <div>
       <p className="mb-2 text-[12px] text-muted">
         Setze genau {rankLimit} {rankLimit === 1 ? "Priorität" : "Prioritäten"} in Wunschreihenfolge.
-        {vetoEnabled ? " Nicht priorisierte Optionen zählen als Veto." : ""}
+        {vetoEnabled ? " Danach wählst du genau eine Option als Veto." : ""}
       </p>
       {ranking.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">
@@ -351,7 +375,14 @@ function RankedPicker({
                 {i + 1}
               </span>
             <span className="flex-1 text-[15px]">{labelOf(id)}</span>
-              <button type="button" onClick={() => setRanking(ranking.filter((x) => x !== id))} className="text-[12px] text-muted">
+              <button
+                type="button"
+                onClick={() => {
+                  setRanking(ranking.filter((x) => x !== id));
+                  setVeto("");
+                }}
+                className="text-[12px] text-muted"
+              >
                 entfernen
               </button>
             </div>
@@ -364,23 +395,43 @@ function RankedPicker({
             key={o.id}
             type="button"
             onClick={() => {
-              if (!limitReached) setRanking([...ranking, o.id]);
+              if (limitReached && vetoEnabled) {
+                setVeto(veto === o.id ? "" : o.id);
+                return;
+              }
+              if (!limitReached) {
+                setRanking([...ranking, o.id]);
+                setVeto("");
+              }
             }}
-            disabled={limitReached}
-            className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 text-left disabled:opacity-55"
+            disabled={limitReached && !vetoEnabled}
+            className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border bg-surface px-3.5 text-left disabled:opacity-55"
+            style={{
+              borderColor: veto === o.id ? "var(--danger)" : "var(--border)",
+            }}
           >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-muted" style={{ borderColor: "var(--border)" }}>
-              <IconPlus size={15} />
+            <span
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-muted"
+              style={{
+                borderColor: veto === o.id ? "var(--danger)" : "var(--border)",
+                background: veto === o.id ? "var(--danger)" : "transparent",
+                color: veto === o.id ? "white" : "var(--text-muted)",
+              }}
+            >
+              {veto === o.id ? <IconCheck size={13} strokeWidth={3.2} /> : <IconPlus size={15} />}
             </span>
             <span className="flex-1 text-[15px]">{o.label}</span>
             {limitReached && (
               <span className="rounded-full bg-[color:var(--surface-2)] px-2 py-1 text-[11px] text-muted">
-                {vetoEnabled ? "Veto" : "nicht gewählt"}
+                {vetoEnabled ? (veto === o.id ? "Veto gesetzt" : "als Veto") : "nicht gewählt"}
               </span>
             )}
           </button>
         ))}
       </div>
+      {vetoEnabled && limitReached && !veto && (
+        <p className="mt-2 text-[12px] text-danger">Wähle noch eine Option als Veto.</p>
+      )}
     </div>
   );
 }
@@ -389,4 +440,8 @@ function rankLimitForPoll(poll: PollDetail): number {
   const max = Math.max(1, poll.options.length - (poll.ranked_veto_enabled ? 1 : 0));
   if (!poll.rank_limit) return max;
   return Math.min(Math.max(1, poll.rank_limit), max);
+}
+
+function vetoLabel(count: number): string {
+  return `${count} ${count === 1 ? "Veto" : "Vetos"}`;
 }
