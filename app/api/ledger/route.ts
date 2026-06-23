@@ -1,0 +1,61 @@
+import { NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { requireAdmin, isAdmin } from "@/lib/auth";
+import { newId, nowIso, readJson, trimmed, int, oneOf } from "@/lib/util";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const db = getDb();
+  const admin = isAdmin();
+  const rows = db
+    .prepare(
+      "SELECT id,kind,amount,description,category,occurred_at,paid_by FROM ledger WHERE deleted_at IS NULL ORDER BY occurred_at DESC, created_at DESC"
+    )
+    .all() as {
+    id: string;
+    kind: "income" | "expense";
+    amount: number;
+    description: string;
+    category: string;
+    occurred_at: string;
+    paid_by: string | null;
+  }[];
+
+  // Harte Grenze: paid_by nur für Admin/Kassenwart. Sonst entfernen (nicht nur im UI).
+  const entries = rows.map((r) => ({ ...r, paid_by: admin ? r.paid_by : null }));
+
+  const income = rows.filter((r) => r.kind === "income").reduce((a, b) => a + b.amount, 0);
+  const expense = rows.filter((r) => r.kind === "expense").reduce((a, b) => a + b.amount, 0);
+
+  return NextResponse.json({ entries, balance: income - expense, income, expense });
+}
+
+export async function POST(req: Request) {
+  const forbidden = requireAdmin();
+  if (forbidden) return forbidden;
+
+  const body = await readJson(req);
+  const kind = oneOf(body.kind, ["income", "expense"], "income");
+  const amount = int(body.amount); // Cent
+  const description = trimmed(body.description);
+  if (amount == null || amount <= 0) return NextResponse.json({ error: "Betrag fehlt." }, { status: 400 });
+  if (!description) return NextResponse.json({ error: "Beschreibung fehlt." }, { status: 400 });
+
+  const db = getDb();
+  const id = newId();
+  db.prepare(
+    "INSERT INTO ledger (id,kind,amount,description,category,occurred_at,paid_by,created_at) VALUES (?,?,?,?,?,?,?,?)"
+  ).run(
+    id,
+    kind,
+    amount,
+    description,
+    trimmed(body.category) || "Allgemein",
+    trimmed(body.occurred_at) || nowIso(),
+    trimmed(body.paid_by) || null,
+    nowIso()
+  );
+  return NextResponse.json({ id }, { status: 201 });
+}

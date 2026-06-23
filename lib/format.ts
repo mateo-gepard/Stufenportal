@@ -1,0 +1,54 @@
+// Anzeige-Helfer. Geld als Cent (Integer) speichern, hier formatieren.
+
+const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+export function money(cents: number): string {
+  return eur.format(Math.round(cents) / 100);
+}
+
+const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" });
+const dateTimeFmt = new Intl.DateTimeFormat("de-DE", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export function date(iso?: string | null): string {
+  if (!iso) return "";
+  return dateFmt.format(new Date(iso));
+}
+
+export function dateTime(iso?: string | null): string {
+  if (!iso) return "";
+  return dateTimeFmt.format(new Date(iso));
+}
+
+/** "Noch 2 Tage", "Heute", "In 3 Std.", "Abgelaufen". */
+export function until(iso?: string | null): string {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms < 0) return "Abgelaufen";
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `Noch ${mins} Min.`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `Noch ${hrs} Std.`;
+  const days = Math.round(hrs / 24);
+  if (days === 1) return "Noch 1 Tag";
+  return `Noch ${days} Tage`;
+}
+
+export function relativeDay(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const today = new Date();
+  const diff = Math.round(
+    (new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() -
+      new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /
+      864e5
+  );
+  if (diff === 0) return "Heute";
+  if (diff === 1) return "Morgen";
+  if (diff === -1) return "Gestern";
+  if (diff > 1 && diff < 7) return `In ${diff} Tagen`;
+  return date(iso);
+}

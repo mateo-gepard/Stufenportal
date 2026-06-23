@@ -1,0 +1,15 @@
+{
+  "name": "Stufenportal",
+  "short_name": "Stufe",
+  "description": "Selbstorganisation der Stufe — Events, News, Abstimmungen, Kasse.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0b",
+  "theme_color": "#0d0d0b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
