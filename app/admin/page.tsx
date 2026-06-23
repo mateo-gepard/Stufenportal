@@ -10,7 +10,7 @@ interface TrashItem {
   id: string;
   title: string;
   deleted_at: string;
-  type: "event" | "news" | "poll" | "ledger";
+  type: "event" | "news" | "poll" | "ledger" | "abizeitung";
 }
 
 const typeLabel: Record<TrashItem["type"], string> = {
@@ -18,6 +18,7 @@ const typeLabel: Record<TrashItem["type"], string> = {
   news: "News",
   poll: "Abstimmung",
   ledger: "Buchung",
+  abizeitung: "Abizeitung",
 };
 
 export default function AdminPage() {
@@ -57,6 +58,7 @@ export default function AdminPage() {
         <QuickLink href="/events" label="Events" />
         <QuickLink href="/news" label="News" />
         <QuickLink href="/polls" label="Abstimmungen" />
+        <QuickLink href="/abizeitung" label="Abizeitung" />
         <QuickLink href="/kasse" label="Kasse" />
       </div>
 

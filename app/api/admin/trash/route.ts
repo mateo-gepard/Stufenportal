@@ -23,6 +23,14 @@ export async function GET() {
   const ledger = await db
     .prepare("SELECT id, description AS title, deleted_at FROM ledger WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
     .all<any>();
+  const abizeitung = await db
+    .prepare(
+      `SELECT id, COALESCE(quote, caption, image_name, 'Abizeitung') AS title, deleted_at
+       FROM abizeitung_entries
+       WHERE deleted_at IS NOT NULL
+       ORDER BY deleted_at DESC`
+    )
+    .all<any>();
 
   return NextResponse.json({
     items: [
@@ -30,6 +38,7 @@ export async function GET() {
       ...news.map((r) => ({ ...r, type: "news" })),
       ...polls.map((r) => ({ ...r, type: "poll" })),
       ...ledger.map((r) => ({ ...r, type: "ledger" })),
+      ...abizeitung.map((r) => ({ ...r, type: "abizeitung" })),
     ].sort((a, b) => (a.deleted_at < b.deleted_at ? 1 : -1)),
   });
 }

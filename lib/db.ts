@@ -189,6 +189,25 @@ async function migrate(): Promise<void> {
       rank      INTEGER
     );
 
+    CREATE TABLE IF NOT EXISTS poll_roster_entries (
+      id           TEXT PRIMARY KEY,
+      poll_id      TEXT NOT NULL,
+      roster_key   TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      ord          INTEGER NOT NULL DEFAULT 0,
+      used_at      TEXT,
+      ballot_id    TEXT,
+      created_at   TEXT NOT NULL,
+      UNIQUE(poll_id, roster_key)
+    );
+
+    CREATE TABLE IF NOT EXISTS poll_roster_aliases (
+      poll_id          TEXT NOT NULL,
+      entry_id         TEXT NOT NULL,
+      normalized_alias TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_poll_roster_alias ON poll_roster_aliases(poll_id, normalized_alias);
+
     CREATE TABLE IF NOT EXISTS ledger (
       id          TEXT PRIMARY KEY,
       kind        TEXT NOT NULL,
@@ -210,6 +229,20 @@ async function migrate(): Promise<void> {
       body        TEXT NOT NULL,
       created_at  TEXT NOT NULL,
       deleted_at  TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS abizeitung_entries (
+      id             TEXT PRIMARY KEY,
+      device_id      TEXT NOT NULL,
+      author_name    TEXT NOT NULL DEFAULT 'Anonym',
+      quote          TEXT,
+      quoted_name    TEXT,
+      caption        TEXT,
+      image_path     TEXT,
+      image_mime     TEXT,
+      image_name     TEXT,
+      created_at     TEXT NOT NULL,
+      deleted_at     TEXT
     );
 
     CREATE TABLE IF NOT EXISTS push_subscriptions (

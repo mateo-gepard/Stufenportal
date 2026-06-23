@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
-import { getDb, batch } from "@/lib/db";
+import { getDb, tx } from "@/lib/db";
 import { deviceId, voterHash, isAdmin } from "@/lib/auth";
-import { newId, nowIso, readJson } from "@/lib/util";
+import { newId, nowIso, readJson, trimmed } from "@/lib/util";
 import { autoClose, buildPollDetail } from "@/lib/polls";
-import type { InValue } from "@libsql/client";
+import { findRosterEntryForName } from "@/lib/stufenliste";
 
 export const runtime = "nodejs";
+
+class VoteError extends Error {
+  constructor(
+    message: string,
+    public status = 400
+  ) {
+    super(message);
+  }
+}
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const device = deviceId(req);
@@ -45,20 +54,57 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const ballotId = newId();
   const anon = !!poll.anonymous;
-  const stmts: { sql: string; args: InValue[] }[] = [
-    {
-      sql: "INSERT INTO ballots (id,poll_id,device_id,voter_hash,created_at) VALUES (?,?,?,?,?)",
-      args: [ballotId, poll.id, anon ? null : device, anon ? voterHash(poll.poll_secret, device) : null, nowIso()],
-    },
-    ...items.map((it) => ({
-      sql: "INSERT INTO vote_items (id,ballot_id,option_id,rank) VALUES (?,?,?,?)",
-      args: [newId(), ballotId, it.option_id, it.rank] as InValue[],
-    })),
-  ];
+  const voterName = trimmed(body.voter_name);
+  let submitted = false;
 
   try {
-    await batch(stmts);
+    await tx(async (t) => {
+      let rosterEntryId: string | null = null;
+      if (anon) {
+        const match = await findRosterEntryForName(t, poll.id, voterName);
+        if (!match.ok) {
+          if (match.reason === "missing") throw new VoteError("Bitte gib deinen Namen zur Prüfung ein.");
+          if (match.reason === "ambiguous") {
+            throw new VoteError("Name ist nicht eindeutig. Bitte Vor- und Nachname eingeben.");
+          }
+          throw new VoteError("Name ist nicht auf der Stufenliste.");
+        }
+        if (match.used) throw new VoteError("Mit diesem Namen wurde schon abgestimmt.", 409);
+        rosterEntryId = match.entryId;
+      }
+
+      const now = nowIso();
+      await t.execute({
+        sql: "INSERT INTO ballots (id,poll_id,device_id,voter_hash,created_at) VALUES (?,?,?,?,?)",
+        args: [
+          ballotId,
+          poll.id,
+          anon ? null : device,
+          anon && rosterEntryId ? voterHash(poll.poll_secret, `roster:${rosterEntryId}`) : null,
+          now,
+        ],
+      });
+
+      for (const it of items) {
+        await t.execute({
+          sql: "INSERT INTO vote_items (id,ballot_id,option_id,rank) VALUES (?,?,?,?)",
+          args: [newId(), ballotId, it.option_id, it.rank],
+        });
+      }
+
+      if (anon && rosterEntryId) {
+        const update = await t.execute({
+          sql: "UPDATE poll_roster_entries SET used_at = ?, ballot_id = ? WHERE id = ? AND poll_id = ? AND used_at IS NULL",
+          args: [now, ballotId, rosterEntryId, poll.id],
+        });
+        if (update.rowsAffected === 0) throw new VoteError("Mit diesem Namen wurde schon abgestimmt.", 409);
+      }
+    });
+    submitted = true;
   } catch (err: unknown) {
+    if (err instanceof VoteError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const msg = String((err as Error).message || "");
     if (/UNIQUE|constraint/i.test(msg)) {
       return NextResponse.json({ error: "Du hast schon abgestimmt." }, { status: 409 });
@@ -67,5 +113,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const detail = await buildPollDetail(poll, device, isAdmin());
-  return NextResponse.json({ poll: detail }, { status: 201 });
+  return NextResponse.json({ poll: { ...detail, voted: submitted, my_choice: items } }, { status: 201 });
 }

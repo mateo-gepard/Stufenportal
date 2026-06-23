@@ -7,6 +7,7 @@ import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { PollDetail } from "@/lib/types";
 import { Skeleton, PollStatusPill, Button, AdminDots, BottomSheet, SheetAction } from "@/components/ui";
+import { Field, Input } from "@/components/form";
 import { until, dateTime } from "@/lib/format";
 
 export default function PollDetailPage({ params }: { params: { id: string } }) {
@@ -20,6 +21,7 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   const [single, setSingle] = useState("");
   const [approval, setApproval] = useState<string[]>([]);
   const [ranking, setRanking] = useState<string[]>([]);
+  const [voterName, setVoterName] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -45,9 +47,14 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       if (ranking.length === 0) return setErr("Bitte eine Reihenfolge wählen."), setBusy(false);
       body = { ranking };
     }
+    if (poll.anonymous) {
+      if (!voterName.trim()) return setErr("Bitte gib deinen Namen zur Prüfung ein."), setBusy(false);
+      body.voter_name = voterName.trim();
+    }
     try {
       const d = (await api(`/api/polls/${params.id}/vote`, { method: "POST", body })) as { poll: PollDetail };
       setPoll(d.poll);
+      setVoterName("");
     } catch (e) {
       setErr((e as Error).message);
       load();
@@ -138,12 +145,30 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
             <RankedPicker options={poll.options} ranking={ranking} setRanking={setRanking} />
           )}
 
+          {poll.anonymous && (
+            <div className="mt-3 rounded-xl border border-line bg-surface p-3">
+              <Field
+                label="Name zur Prüfung"
+                hint="Nur für den Abgleich mit der Stufenliste. Dein Name wird nicht angezeigt."
+              >
+                <Input
+                  value={voterName}
+                  onChange={(e) => setVoterName(e.target.value)}
+                  placeholder="Vorname, Nachname oder beides"
+                  autoComplete="off"
+                />
+              </Field>
+            </div>
+          )}
+
           {err && <p className="mt-3 text-small text-danger">{err}</p>}
           <Button onClick={vote} disabled={busy} full>
             {busy ? "Senden…" : "Stimme abgeben"}
           </Button>
           <p className="mt-2 text-center text-[12px] text-muted">
-            Eine Stimme pro Gerät. {poll.anonymous ? "Anonym — niemand sieht, wie du stimmst." : ""}
+            {poll.anonymous
+              ? "Eine Stimme pro Name aus der Stufenliste. Deine Auswahl bleibt anonym."
+              : "Eine Stimme pro Gerät."}
           </p>
         </section>
       )}

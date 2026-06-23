@@ -32,14 +32,15 @@ Erst dann erscheinen „+ Neu", die `⋯`-Aktionen, Abhaken, Befördern, Sichtba
 - **Heute** — priorisierter Digest: beförderte News → Dringendes → kommende Events → offene Polls (gekürzt).
 - **Events** — Status & Fortschritt, Meilensteine (abhakbar), Eintragungslisten mit Slots, Kapazität, Warteliste (rückt automatisch nach), Kommentare.
 - **News** — Priorität, Status `draft/published/hidden/archived`, „auf Heute befördern" (max. 3), **Web-Push** bei wichtig/dringend.
-- **Abstimmungen** — Single Choice, Approval, Ranked (**Borda**). Anonym/offen, reveal live/nach Schluss, Frist (serverseitig erzwungen), `result_visibility_min` (Default 5) gegen De-Anonymisierung. Optionen eingefroren nach erster Stimme.
+- **Abstimmungen** — Single Choice, Approval, Ranked (**Borda**). Anonym/offen, reveal live/nach Schluss, Frist (serverseitig erzwungen), `result_visibility_min` (Default 5) gegen De-Anonymisierung. Anonyme Polls bekommen je Abstimmung eine eigene Stufenlisten-Kopie; der eingegebene Name wird nur serverseitig zum Einmal-Abgleich genutzt und nicht angezeigt. Optionen eingefroren nach erster Stimme.
 - **Kasse** — Kassenbuch & großer Kassenstand. `paid_by` ist **nur im Sprecher-Modus** sichtbar (serverseitig, nicht nur im UI).
+- **Abizeitung** — Zitate und Bilder einreichen, mit optionalem Namen, Bildunterschrift und Papierkorb-Verwaltung.
 - **Admin-Kern** — Inline-`⋯`-Bottom-Sheets, Verwaltung mit **Papierkorb** (Soft-Delete → Wiederherstellen / endgültig löschen).
 - **Identität & Leaderboard** — kein Login: Name nur inline beim Eintragen/Kommentieren, lokal gemerkt. Wer mitmacht, wird „bekannt" und kann von Sprechern **Punkte** (mit Grund) bekommen. Das **Leaderboard ist opt-in** (Default aus) — nur wer sich sichtbar schaltet, erscheint.
 
 ### Datenschutz-Eigenschaften (umgesetzt)
 
-- Anonyme Polls speichern **keinen** `user_id`/Geräte-Bezug, sondern `voter_hash = HMAC(poll_secret, device_id)` → Doppelstimmen verhindert, Identität nicht ableitbar, über Polls hinweg nicht korrelierbar.
+- Anonyme Polls speichern **keinen** `user_id`/Geräte-Bezug. Neue anonyme Polls prüfen serverseitig gegen eine poll-eigene Stufenliste: Name vorhanden + noch nicht benutzt → Stimme wird angenommen; sonst abgelehnt. In `ballots` landet nur ein HMAC auf die poll-eigene Listen-ID, nicht der eingegebene Name. Der Name taucht in keiner API-Antwort auf.
 - Soft-Delete überall (`deleted_at`), nichts wird hart entfernt.
 - Push läuft selbst gehostet über VAPID (web-push), keine Drittanbieter.
 
@@ -60,11 +61,12 @@ components/     UI-Primitive (Karte, Bottom-Sheet, Meilenstein-Leiste, …), Bot
 lib/            db.ts (Schema+Seed), auth.ts (Admin-Cookie, Geräte-ID, voter_hash),
                 polls.ts (Auszählung), format.ts, types.ts, push.ts, client.ts
 public/         PWA-Manifest, Service Worker, Icons
-data/           SQLite-Datei (gitignored)
+data/           SQLite-Datei und lokale Uploads (gitignored)
 ```
 
 ## Hinweise
 
 - **Web-Push** braucht in Produktion HTTPS. Lokal funktioniert es in Chrome auf `localhost`. „Push aktivieren" findest du unter **Mehr**.
+- **Abizeitung-Bilder** werden lokal unter `data/uploads/abizeitung` gespeichert und über eine API-Route ausgeliefert.
 - Next.js ist auf der gepatchten **14.2.35** gepinnt. Die noch offenen npm-Advisories verlangen einen Sprung auf Next 16 (Breaking) und betreffen v. a. Self-Hosting-DoS/Cache-Themen — bewusst nicht in diesem v1 gemacht.
 - DB zurücksetzen: Server stoppen, `data/stufenportal.db*` löschen, neu starten (startet leer; mit `SP_SEED=true` wieder mit Demo-Daten).

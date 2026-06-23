@@ -4,6 +4,7 @@ import { getDb, batch } from "@/lib/db";
 import { requireAdmin, deviceId, voterHash } from "@/lib/auth";
 import { newId, nowIso, readJson, trimmed, str, int, oneOf } from "@/lib/util";
 import { autoClose } from "@/lib/polls";
+import { stufenlisteSnapshotStatements } from "@/lib/stufenliste";
 import type { PollMethod } from "@/lib/types";
 import type { InValue } from "@libsql/client";
 
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
 
   const out = await Promise.all(
     polls.map(async (p) => {
-      await autoClose(p);
+      p = await autoClose(p);
       const totalRow = await db.prepare("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?").get<{ n: number }>(p.id);
       const total = totalRow?.n ?? 0;
       let voted = false;
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
 
   const id = newId();
   const method = oneOf<PollMethod>(body.method, METHODS, "single");
+  const anonymous = body.anonymous ? 1 : 0;
 
   const stmts: { sql: string; args: InValue[] }[] = [
     {
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
         id,
         question,
         method,
-        body.anonymous ? 1 : 0,
+        anonymous,
         oneOf(body.reveal, ["live", "after_close"], "live"),
         int(body.quorum),
         int(body.result_visibility_min) ?? 5,
@@ -82,6 +84,7 @@ export async function POST(req: Request) {
   labels.forEach((label, i) =>
     stmts.push({ sql: "INSERT INTO poll_options (id,poll_id,label,ord) VALUES (?,?,?,?)", args: [newId(), id, label, i] })
   );
+  if (anonymous) stmts.push(...stufenlisteSnapshotStatements(id));
 
   await batch(stmts);
   return NextResponse.json({ id }, { status: 201 });

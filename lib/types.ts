@@ -118,6 +118,18 @@ export interface Comment {
   mine: boolean;
 }
 
+export interface AbizeitungEntry {
+  id: string;
+  author_name: string;
+  quote: string | null;
+  quoted_name: string | null;
+  caption: string | null;
+  image_url: string | null;
+  image_name: string | null;
+  created_at: string;
+  mine: boolean;
+}
+
 export interface Me {
   name: string;
   show_on_leaderboard: boolean;

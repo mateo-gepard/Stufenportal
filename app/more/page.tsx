@@ -113,6 +113,7 @@ export default function MorePage() {
 
       <div className="flex flex-col gap-2.5">
         <NavRow href="/leaderboard" label="Leaderboard" sub="Wer macht viel für die Stufe" icon="★" />
+        <NavRow href="/abizeitung" label="Abizeitung" sub="Zitate & Bilder sammeln" icon="✎" />
         <NavRow href="/kasse" label="Kasse" sub="Kassenstand & Kassenbuch" icon="€" />
         <NavRow href="/news" label="News" sub="Alle Ankündigungen" icon="✦" />
         {admin && <NavRow href="/admin" label="Verwaltung" sub="Übersicht & Papierkorb" icon="⚙︎" accent />}
