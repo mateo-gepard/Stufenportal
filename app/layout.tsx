@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d0d0b",
+  themeColor: "#fafaf7",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Theme früh setzen, um Flash zu vermeiden. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sp_theme')||'dark')}catch(e){document.documentElement.setAttribute('data-theme','dark')}`,
+            __html: `try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sp_theme')||'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}`,
           }}
         />
       </head>

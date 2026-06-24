@@ -143,12 +143,26 @@ export default function MorePage() {
     <div className="sp-in pb-6">
       <h1 className="mb-4 font-display text-display">Mehr</h1>
 
-      <div className="flex flex-col gap-2.5">
-        <NavRow href="/leaderboard" label="Leaderboard" sub="Wer macht viel für die Stufe" icon={<IconMedal size={20} />} />
-        <NavRow href="/abizeitung" label="Abizeitung" sub="Zitate & Bilder sammeln" icon={<IconPencil size={20} />} />
-        <NavRow href="/kasse" label="Kasse" sub="Kassenstand & Kassenbuch" icon={<IconEuro size={20} />} />
-        <NavRow href="/news" label="News" sub="Alle Ankündigungen" icon={<IconMegaphone size={20} />} />
-        {admin && <NavRow href="/admin" label="Verwaltung" sub="Übersicht & Papierkorb" icon={<IconSliders size={20} />} accent />}
+      <Card className="mb-4 p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+            <IconHome size={22} />
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-h2 leading-tight">{me?.name || name || "Deine Stufe"}</p>
+            <p className="text-small text-muted">
+              {me ? `${me.points} ${me.points === 1 ? "Punkt" : "Punkte"} · Leaderboard ${show ? "sichtbar" : "aus"}` : "Lokales Profil"}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <NavTile href="/leaderboard" label="Leaderboard" sub="Punkte" icon={<IconMedal size={21} />} />
+        <NavTile href="/abizeitung" label="Abizeitung" sub="Zitate & Bilder" icon={<IconPencil size={21} />} />
+        <NavTile href="/kasse" label="Kasse" sub="Finanzen" icon={<IconEuro size={21} />} />
+        <NavTile href="/news" label="News" sub="Ankündigungen" icon={<IconMegaphone size={21} />} />
+        {admin && <NavTile href="/admin" label="Verwaltung" sub="Admin" icon={<IconSliders size={21} />} accent />}
       </div>
 
       {/* Leaderboard-Sichtbarkeit (opt-in, default aus) */}
@@ -264,12 +278,12 @@ export default function MorePage() {
   );
 }
 
-function NavRow({ href, label, sub, icon, accent }: { href: string; label: string; sub: string; icon: ReactNode; accent?: boolean }) {
+function NavTile({ href, label, sub, icon, accent }: { href: string; label: string; sub: string; icon: ReactNode; accent?: boolean }) {
   return (
     <Link href={href}>
-      <Card className="flex items-center gap-3.5">
+      <Card className="min-h-[112px] p-3.5">
         <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px]"
+          className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px]"
           style={{
             background: accent ? "color-mix(in srgb, var(--signal) 14%, transparent)" : "var(--surface-2)",
             color: accent ? "var(--signal-text)" : "var(--text)",
@@ -277,13 +291,8 @@ function NavRow({ href, label, sub, icon, accent }: { href: string; label: strin
         >
           {icon}
         </span>
-        <div className="flex-1">
-          <p className="font-medium">{label}</p>
-          <p className="text-[12px] text-muted">{sub}</p>
-        </div>
-        <span className="text-muted">
-          <IconChevronRight size={17} />
-        </span>
+        <p className="font-medium">{label}</p>
+        <p className="text-[12px] text-muted">{sub}</p>
       </Card>
     </Link>
   );

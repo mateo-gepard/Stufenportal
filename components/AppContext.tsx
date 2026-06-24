@@ -23,11 +23,11 @@ export function useApp(): AppState {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState(false);
   const [ready, setReady] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     getDeviceId(); // sicherstellen, dass die Geräte-ID existiert
-    const saved = (localStorage.getItem("sp_theme") as "light" | "dark") || "dark";
+    const saved = (localStorage.getItem("sp_theme") as "light" | "dark") || "light";
     setTheme(saved);
     document.documentElement.setAttribute("data-theme", saved);
     (api("/api/admin/status") as Promise<{ admin: boolean }>)

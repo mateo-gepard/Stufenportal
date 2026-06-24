@@ -5,6 +5,22 @@ export function money(cents: number): string {
   return eur.format(Math.round(cents) / 100);
 }
 
+export function centsFromEuroInput(value: string): number | null {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(parsed * 100);
+}
+
+export function euroInputValue(cents?: number | null): string {
+  if (!cents) return "";
+  return (Math.round(cents) / 100).toLocaleString("de-DE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" });
 const dateTimeFmt = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",

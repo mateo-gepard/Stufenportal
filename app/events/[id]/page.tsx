@@ -17,8 +17,8 @@ import {
   SheetAction,
 } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
-import { IconCheck, IconChevronLeft, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTrash } from "@/components/icons";
-import { relativeDay } from "@/lib/format";
+import { IconCheck, IconChevronLeft, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTarget, IconTrash } from "@/components/icons";
+import { centsFromEuroInput, euroInputValue, money, relativeDay } from "@/lib/format";
 import Comments from "@/components/Comments";
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
@@ -105,6 +105,19 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       {ev.description && <p className="mb-4 whitespace-pre-wrap text-body text-muted">{ev.description}</p>}
+
+      {ev.money_goal_cents ? (
+        <div className="mb-5 flex items-start gap-3 rounded-lg border border-line bg-surface p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+            <IconTarget size={20} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenziel</p>
+            <p className="tabular font-display text-h2">{money(ev.money_goal_cents)}</p>
+            {ev.money_goal_note && <p className="mt-1 text-small text-muted">{ev.money_goal_note}</p>}
+          </div>
+        </div>
+      ) : null}
 
       {/* Meilensteine */}
       <section className="mb-5">
@@ -311,13 +324,24 @@ function EditEventSheet({
 }) {
   const [title, setTitle] = useState(ev.title);
   const [description, setDescription] = useState(ev.description);
+  const [moneyGoal, setMoneyGoal] = useState(euroInputValue(ev.money_goal_cents));
+  const [moneyGoalNote, setMoneyGoalNote] = useState(ev.money_goal_note || "");
+  const [err, setErr] = useState("");
   useEffect(() => {
     setTitle(ev.title);
     setDescription(ev.description);
+    setMoneyGoal(euroInputValue(ev.money_goal_cents));
+    setMoneyGoalNote(ev.money_goal_note || "");
+    setErr("");
   }, [ev, open]);
 
   async function save() {
-    await api(`/api/events/${ev.id}`, { method: "PATCH", body: { title, description } });
+    const moneyGoalCents = centsFromEuroInput(moneyGoal);
+    if (moneyGoal.trim() && moneyGoalCents == null) return setErr("Kassenziel ist ungültig.");
+    await api(`/api/events/${ev.id}`, {
+      method: "PATCH",
+      body: { title, description, money_goal_cents: moneyGoalCents, money_goal_note: moneyGoalNote },
+    });
     onSaved();
   }
 
@@ -329,6 +353,17 @@ function EditEventSheet({
       <Field label="Beschreibung">
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
+      <div className="rounded-xl border border-line bg-surface p-3">
+        <Field label="Kassenziel (€)" hint="Leer lassen, um das Ziel zu entfernen.">
+          <Input inputMode="decimal" value={moneyGoal} onChange={(e) => setMoneyGoal(e.target.value)} placeholder="0,00" />
+        </Field>
+        {moneyGoal.trim() && (
+          <Field label="Notiz zum Ziel (optional)">
+            <Input value={moneyGoalNote} onChange={(e) => setMoneyGoalNote(e.target.value)} maxLength={160} />
+          </Field>
+        )}
+      </div>
+      {err && <p className="mb-2 text-small text-danger">{err}</p>}
       <Button onClick={save} full>
         Speichern
       </Button>

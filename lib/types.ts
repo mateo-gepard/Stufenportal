@@ -45,6 +45,8 @@ export interface EventSummary {
   title: string;
   status: EventStatus;
   start_at: string | null;
+  money_goal_cents: number | null;
+  money_goal_note: string | null;
   done_count: number;
   total_count: number;
 }
@@ -111,6 +113,15 @@ export interface LedgerEntry {
   category: string;
   occurred_at: string;
   paid_by: string | null; // nur Admin
+}
+
+export interface EventGoal {
+  id: string;
+  title: string;
+  status: EventStatus;
+  start_at: string | null;
+  money_goal_cents: number;
+  money_goal_note: string | null;
 }
 
 export interface Comment {

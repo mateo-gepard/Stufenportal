@@ -144,9 +144,9 @@ export default function Onboarding() {
   if (!mounted || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-[color:var(--bg)] text-text">
-      <div className="mx-auto flex min-h-dvh max-w-screen-sm flex-col px-4 pb-[112px] pt-5">
-        <div className="mb-3 flex items-center justify-between">
+    <div className="fixed inset-0 z-[60] overflow-hidden bg-[color:var(--bg)] text-text">
+      <div className="mx-auto flex h-[100dvh] max-w-screen-sm flex-col px-4 pb-[96px] pt-4">
+        <div className="mb-2 flex shrink-0 items-center justify-between">
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
               <span
@@ -218,15 +218,15 @@ function MainScreensStep({
   }
 
   return (
-    <section className="flex flex-1 flex-col">
-      <div className="mb-4">
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-2 shrink-0">
         <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Start</p>
-        <h1 className="font-display text-display leading-none">Drei Tabs, die du dauernd brauchst.</h1>
-        <p className="mt-2 text-small text-muted">Swipe durch die Vorschau und sieh kurz, wo was passiert.</p>
+        <h1 className="font-display text-h1 leading-tight">Drei Tabs, die du dauernd brauchst.</h1>
+        <p className="mt-1 text-small text-muted">Swipe kurz durch Heute, Events und Abstimmungen.</p>
       </div>
 
       <div
-        className="relative mx-auto h-[430px] w-full max-w-[360px] touch-pan-y overflow-hidden"
+        className="relative mx-auto min-h-[250px] w-full max-w-[360px] flex-1 touch-pan-y overflow-hidden"
         onPointerDown={(e) => {
           startX.current = e.clientX;
         }}
@@ -243,9 +243,9 @@ function MainScreensStep({
               key={preview.id}
               type="button"
               onClick={() => setActive(index)}
-              className="absolute left-1/2 top-3 w-[258px] origin-center rounded-[24px] border border-line bg-surface p-3 text-left shadow-2xl transition-all duration-300"
+              className="absolute left-1/2 top-1 w-[238px] origin-center rounded-[22px] border border-line bg-surface p-2.5 text-left shadow-2xl transition-all duration-300"
               style={{
-                transform: `translateX(calc(-50% + ${offset * 126}px)) scale(${isActive ? 1 : 0.86})`,
+                transform: `translateX(calc(-50% + ${offset * 116}px)) scale(${isActive ? 1 : 0.86})`,
                 opacity: isActive ? 1 : 0.45,
                 filter: isActive ? "none" : "blur(2px)",
                 zIndex: isActive ? 3 : 1,
@@ -259,8 +259,8 @@ function MainScreensStep({
         })}
       </div>
 
-      <div className="mt-auto rounded-lg border border-line bg-surface p-3">
-        <div className="mb-2 flex items-center justify-between">
+      <div className="mt-2 shrink-0 rounded-lg border border-line bg-surface p-2.5">
+        <div className="mb-1.5 flex items-center justify-between">
           <button
             type="button"
             onClick={() => changePreview(-1)}
@@ -284,7 +284,7 @@ function MainScreensStep({
         </div>
         <div className="grid grid-cols-3 gap-1.5">
           {current.callouts.map((label) => (
-            <span key={label} className="inline-flex items-center justify-center gap-1 rounded-lg bg-[color:var(--surface-2)] px-2 py-1.5 text-[11px] text-muted">
+            <span key={label} className="inline-flex items-center justify-center gap-1 rounded-lg bg-[color:var(--surface-2)] px-2 py-1 text-[10px] text-muted">
               <IconArrowDown size={12} />
               {label}
             </span>
@@ -298,9 +298,9 @@ function MainScreensStep({
 function MockScreen({ preview, active }: { preview: MainPreview; active: boolean }) {
   return (
     <div className="overflow-hidden rounded-[18px] border border-line bg-[color:var(--bg)]">
-      <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
+      <div className="flex items-center justify-between border-b border-line px-3 py-2">
         <div>
-          <p className="font-display text-[24px] leading-none">{preview.title}</p>
+          <p className="font-display text-[22px] leading-none">{preview.title}</p>
           <p className="mt-0.5 text-[10px] text-muted">{preview.subtitle}</p>
         </div>
         <span
@@ -313,16 +313,16 @@ function MockScreen({ preview, active }: { preview: MainPreview; active: boolean
           {preview.icon}
         </span>
       </div>
-      <div className="space-y-2 p-3">
+      <div className="space-y-1.5 p-2.5">
         {preview.callouts.map((label, index) => (
-          <div key={label} className="flex items-center gap-2">
+          <div key={label} className="flex items-center gap-1.5">
             <span className="h-px flex-1 bg-line" />
             <span className="rounded-full bg-surface px-2 py-1 text-[10px] font-medium text-muted">{label}</span>
             <span className="h-px flex-1 bg-line" style={{ opacity: index === 1 ? 1 : 0.35 }} />
           </div>
         ))}
         {preview.rows.map((row) => (
-          <div key={row.title} className="rounded-lg border border-line bg-surface p-2.5">
+          <div key={row.title} className="rounded-lg border border-line bg-surface p-2">
             <div className="mb-1 flex items-start justify-between gap-2">
               <p className="truncate text-[12px] font-medium">{row.title}</p>
               <span
@@ -331,7 +331,7 @@ function MockScreen({ preview, active }: { preview: MainPreview; active: boolean
               />
             </div>
             <p className="text-[10px] text-muted">{row.meta}</p>
-            <div className="mt-2 h-1.5 rounded-full bg-[color:var(--surface-2)]">
+            <div className="mt-1.5 h-1 rounded-full bg-[color:var(--surface-2)]">
               <div
                 className="h-full rounded-full"
                 style={{
@@ -364,24 +364,24 @@ function MoreStep() {
   ];
 
   return (
-    <section className="flex flex-1 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col">
       <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Mehr</p>
-      <h1 className="font-display text-display leading-none">Alles, was nicht jeden Tag brennt.</h1>
-      <p className="mt-2 text-small text-muted">Der Mehr-Tab ist der ruhige Werkzeugkasten für die Stufe.</p>
+      <h1 className="font-display text-h1 leading-tight">Alles, was nicht jeden Tag brennt.</h1>
+      <p className="mt-1 text-small text-muted">Der Mehr-Tab ist der Werkzeugkasten der Stufe.</p>
 
-      <div className="mt-6 rounded-[24px] border border-line bg-surface p-3 shadow-2xl">
+      <div className="mt-4 rounded-[22px] border border-line bg-surface p-3 shadow-2xl">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <p className="font-display text-[28px] leading-none">Mehr</p>
+            <p className="font-display text-[26px] leading-none">Mehr</p>
             <p className="mt-1 text-[11px] text-muted">sammeln, prüfen, verwalten</p>
           </div>
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
             <IconSliders size={20} />
           </span>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {rows.map((row) => (
-            <div key={row.label} className="flex items-center gap-3 rounded-lg border border-line bg-[color:var(--bg)] px-3 py-2.5">
+            <div key={row.label} className="flex items-center gap-3 rounded-lg border border-line bg-[color:var(--bg)] px-3 py-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface-2)]">{row.icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-small font-medium">{row.label}</p>
@@ -393,7 +393,7 @@ function MoreStep() {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <InfoTile title="Freiwillig" body="Leaderboard ist opt-in." />
         <InfoTile title="Sammeln" body="Abizeitung nimmt Zitate und Bilder." />
         <InfoTile title="Finanzen" body="Kasse bleibt übersichtlich." />
@@ -413,17 +413,17 @@ function NameStep({
   err: string;
 }) {
   return (
-    <section className="flex flex-1 flex-col">
-      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
         <IconUser size={30} />
       </div>
       <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Name</p>
-      <h1 className="font-display text-display leading-none">Ein Name reicht.</h1>
-      <p className="mt-2 text-small text-muted">
+      <h1 className="font-display text-h1 leading-tight">Ein Name reicht.</h1>
+      <p className="mt-1 text-small text-muted">
         Du brauchst keinen Account. Dein Name hilft bei Eintragungen, Kommentaren und später beim freiwilligen Leaderboard.
       </p>
 
-      <div className="mt-6 rounded-lg border border-line bg-surface p-3.5">
+      <div className="mt-4 rounded-lg border border-line bg-surface p-3">
         <Field label="Dein Name" hint="Kannst du später in Mehr ändern.">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Vorname oder Spitzname" maxLength={40} />
         </Field>
@@ -433,7 +433,7 @@ function NameStep({
         {err && <p className="mt-2 text-[12px] text-danger">{err}</p>}
       </div>
 
-      <div className="mt-5 space-y-2 text-small">
+      <div className="mt-3 space-y-1.5 text-small">
         {["Kein Konto", "Name nur dort, wo er gebraucht wird", "Leaderboard bleibt freiwillig"].map((item) => (
           <p key={item} className="flex items-center gap-2 text-muted">
             <IconCheck size={15} style={{ color: "var(--success)" }} />

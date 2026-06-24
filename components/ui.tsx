@@ -19,7 +19,7 @@ export function Card({
     <div
       onClick={onClick}
       style={style}
-      className={`rounded-lg border border-line bg-surface p-3.5 ${onClick ? "cursor-pointer active:scale-[0.995] transition-transform" : ""} ${className}`}
+      className={`rounded-lg border border-line bg-surface p-4 transition-[border-color,background-color,transform] duration-150 ${onClick ? "cursor-pointer active:scale-[0.995]" : ""} ${className}`}
     >
       {children}
     </div>
@@ -182,7 +182,7 @@ export function Button({
   full?: boolean;
 }) {
   const base =
-    "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-40";
+    "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-40";
   const styles: Record<string, string> = {
     primary: "text-white",
     ghost: "text-[color:var(--signal-text)]",

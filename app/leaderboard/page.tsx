@@ -7,7 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { LeaderboardRow, MemberRow } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Select } from "@/components/form";
-import { IconChevronLeft, IconMedal, IconPlus } from "@/components/icons";
+import { IconChevronLeft, IconMedal, IconPlus, IconTrophy } from "@/components/icons";
 
 export default function LeaderboardPage() {
   const { admin } = useApp();
@@ -51,11 +51,19 @@ export default function LeaderboardPage() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-2">
+      {board && board.length > 0 && (
+        <div className="mb-4 grid grid-cols-3 items-end gap-2">
+          {board.slice(0, 3).map((row, index) => (
+            <PodiumCard key={row.rank + row.name} row={row} place={index + 1} />
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2.5">
         {board?.map((row) => (
           <Card
             key={row.rank + row.name}
-            className="flex items-center gap-3.5"
+            className="flex items-center gap-3.5 p-4"
             style={row.mine ? { borderColor: "var(--signal)" } : undefined}
           >
             <span
@@ -78,6 +86,28 @@ export default function LeaderboardPage() {
 
       {admin && <AwardSheet open={award} onClose={() => setAward(false)} onDone={() => { setAward(false); load(); }} />}
     </div>
+  );
+}
+
+function PodiumCard({ row, place }: { row: LeaderboardRow; place: number }) {
+  const heights: Record<number, string> = { 1: "min-h-[132px]", 2: "min-h-[112px]", 3: "min-h-[100px]" };
+  return (
+    <Card
+      className={`${heights[place]} flex flex-col items-center justify-end p-3 text-center`}
+      style={row.mine ? { borderColor: "var(--signal)" } : undefined}
+    >
+      <span
+        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full"
+        style={{
+          color: place === 1 ? "white" : "var(--signal-text)",
+          background: place === 1 ? "var(--signal)" : "color-mix(in srgb, var(--signal) 14%, transparent)",
+        }}
+      >
+        {place === 1 ? <IconTrophy size={18} /> : <IconMedal size={18} />}
+      </span>
+      <p className="line-clamp-2 text-small font-medium">{row.name}</p>
+      <p className="tabular font-display text-h2">{row.points}</p>
+    </Card>
   );
 }
 

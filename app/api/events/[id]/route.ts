@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, batch } from "@/lib/db";
 import { requireAdmin, deviceId } from "@/lib/auth";
 import { nowIso, readJson, trimmed, str, oneOf } from "@/lib/util";
+import { parseMoneyGoalCents, parseMoneyGoalNote } from "@/lib/eventGoals";
 import type { EventDetail, EventStatus, SignupList } from "@/lib/types";
 import type { InValue } from "@libsql/client";
 
@@ -21,6 +22,8 @@ async function buildEventDetail(eventId: string, device: string | null): Promise
       status: EventStatus;
       start_at: string | null;
       end_at: string | null;
+      money_goal_cents: number | null;
+      money_goal_note: string | null;
     }>(eventId);
   if (!e) return null;
 
@@ -76,6 +79,8 @@ async function buildEventDetail(eventId: string, device: string | null): Promise
     status: e.status,
     start_at: e.start_at,
     end_at: e.end_at,
+    money_goal_cents: e.money_goal_cents,
+    money_goal_note: e.money_goal_note,
     done_count,
     total_count: milestones.length,
     milestones,
@@ -116,6 +121,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (body.start_at !== undefined) {
     sets.push("start_at = ?");
     vals.push(str(body.start_at) || null);
+  }
+  if (body.money_goal_cents !== undefined) {
+    const cents = parseMoneyGoalCents(body.money_goal_cents);
+    if (cents instanceof Error) return NextResponse.json({ error: cents.message }, { status: 400 });
+    sets.push("money_goal_cents = ?");
+    vals.push(cents);
+    sets.push("money_goal_note = ?");
+    vals.push(parseMoneyGoalNote(body.money_goal_note, cents));
+  } else if (body.money_goal_note !== undefined) {
+    sets.push("money_goal_note = ?");
+    vals.push(trimmed(body.money_goal_note).slice(0, 160) || null);
   }
   if (sets.length) {
     vals.push(params.id);

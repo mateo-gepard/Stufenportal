@@ -4,17 +4,19 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
-import type { LedgerEntry } from "@/lib/types";
+import type { EventGoal, LedgerEntry } from "@/lib/types";
 import { Card, Skeleton, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
 import { Field, Input, Select } from "@/components/form";
-import { IconArrowDown, IconArrowUp, IconChevronLeft, IconPlus, IconTrash } from "@/components/icons";
-import { money, date } from "@/lib/format";
+import { IconArrowDown, IconArrowUp, IconChart, IconChevronLeft, IconPlus, IconTarget, IconTrash } from "@/components/icons";
+import { money, date, relativeDay } from "@/lib/format";
 
 interface LedgerData {
   entries: LedgerEntry[];
   balance: number;
   income: number;
   expense: number;
+  event_goal_total: number;
+  event_goals: EventGoal[];
 }
 
 export default function KassePage() {
@@ -53,28 +55,58 @@ export default function KassePage() {
       {!data ? (
         <Skeleton className="h-28 w-full" />
       ) : (
-        <Card className="mb-5 text-center">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenstand</p>
-          <p className="tabular font-display text-[40px] leading-none" style={{ color: data.balance >= 0 ? "var(--text)" : "var(--danger)" }}>
-            {money(data.balance)}
-          </p>
-          <div className="mt-3 flex justify-center gap-6 text-small text-muted">
-            <span className="tabular inline-flex items-center gap-1.5">
-              <IconArrowDown size={14} />
-              {money(data.income)}
-            </span>
-            <span className="tabular inline-flex items-center gap-1.5">
-              <IconArrowUp size={14} />
-              {money(data.expense)}
-            </span>
-          </div>
-        </Card>
+        <div className="mb-5 space-y-3">
+          <Card className="overflow-hidden p-0">
+            <div className="p-5 text-center">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenstand</p>
+              <p className="tabular font-display text-[42px] leading-none" style={{ color: data.balance >= 0 ? "var(--text)" : "var(--danger)" }}>
+                {money(data.balance)}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-line">
+              <MoneyStat icon={<IconArrowDown size={15} />} label="Einnahmen" value={data.income} tone="success" />
+              <MoneyStat icon={<IconArrowUp size={15} />} label="Ausgaben" value={data.expense} tone="danger" />
+            </div>
+          </Card>
+
+          {data.event_goals.length > 0 && (
+            <Card className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+                    <IconTarget size={18} />
+                  </span>
+                  <div>
+                    <p className="font-medium">Geplante Event-Ziele</p>
+                    <p className="text-[12px] text-muted">Nicht im Kassenstand eingerechnet.</p>
+                  </div>
+                </div>
+                <span className="tabular font-display text-h2">{money(data.event_goal_total)}</span>
+              </div>
+              <div className="space-y-2">
+                {data.event_goals.map((goal) => (
+                  <Link key={goal.id} href={`/events/${goal.id}`} className="flex items-center gap-3 rounded-lg bg-[color:var(--surface-2)] px-3 py-2.5">
+                    <IconChart size={16} className="shrink-0 text-muted" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-small font-medium">{goal.title}</p>
+                      <p className="truncate text-[11px] text-muted">
+                        {goal.start_at ? relativeDay(goal.start_at) : "Ohne Datum"}
+                        {goal.money_goal_note ? ` · ${goal.money_goal_note}` : ""}
+                      </p>
+                    </div>
+                    <span className="tabular shrink-0 text-small font-medium">{money(goal.money_goal_cents)}</span>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
       )}
 
       <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenbuch</h2>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {data?.entries.map((e) => (
-          <div key={e.id} className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-2.5">
+          <div key={e.id} className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px]"
               style={{
@@ -100,6 +132,7 @@ export default function KassePage() {
         ))}
         {data?.entries.length === 0 && <p className="text-small text-muted">Noch keine Buchungen.</p>}
       </div>
+      {!data && <Skeleton className="h-32 w-full" />}
 
       {!admin && (
         <p className="mt-4 text-center text-[12px] text-muted">
@@ -119,6 +152,30 @@ export default function KassePage() {
           </div>
         )}
       </BottomSheet>
+    </div>
+  );
+}
+
+function MoneyStat({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: "success" | "danger";
+}) {
+  return (
+    <div className="px-4 py-3 text-center">
+      <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-muted">
+        {icon}
+        {label}
+      </p>
+      <p className="tabular font-medium" style={{ color: `var(--${tone})` }}>
+        {money(value)}
+      </p>
     </div>
   );
 }

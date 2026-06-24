@@ -202,3 +202,38 @@ export const IconArrowUp = (p: P) => (
     <path d="M12 19V6M6.5 11.5 12 6l5.5 5.5" />
   </Svg>
 );
+
+export const IconTarget = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="4.5" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+  </Svg>
+);
+
+export const IconClock = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Svg>
+);
+
+export const IconTrophy = (p: P) => (
+  <Svg {...p}>
+    <path d="M8 4h8v4.5a4 4 0 0 1-8 0z" />
+    <path d="M8 6H5.5A2.5 2.5 0 0 0 8 10" />
+    <path d="M16 6h2.5A2.5 2.5 0 0 1 16 10" />
+    <path d="M12 12.5V17" />
+    <path d="M8.5 20h7" />
+    <path d="M10 17h4" />
+  </Svg>
+);
+
+export const IconChart = (p: P) => (
+  <Svg {...p}>
+    <path d="M5 19V9" />
+    <path d="M12 19V5" />
+    <path d="M19 19v-7" />
+    <path d="M3.5 19.5h17" />
+  </Svg>
+);

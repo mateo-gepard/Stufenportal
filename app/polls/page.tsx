@@ -7,7 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { PollMethod, PollStatus } from "@/lib/types";
 import { Card, PollStatusPill, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Textarea, Select, Toggle } from "@/components/form";
-import { IconCheck } from "@/components/icons";
+import { IconCheck, IconClock, IconPlus, IconVote } from "@/components/icons";
 import { until } from "@/lib/format";
 
 interface PollListItem {
@@ -45,7 +45,12 @@ export default function PollsPage() {
     <div className="sp-in pb-6">
       <header className="mb-3 flex items-center justify-between">
         <h1 className="font-display text-display">Abstimmungen</h1>
-        {admin && <Button onClick={() => setOpen(true)}>+ Neu</Button>}
+        {admin && (
+          <Button onClick={() => setOpen(true)}>
+            <IconPlus size={17} />
+            Neu
+          </Button>
+        )}
       </header>
 
       {!polls && <SkeletonList rows={3} />}
@@ -55,25 +60,33 @@ export default function PollsPage() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      {polls && polls.length > 0 && (
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <PollStat label="Offen" value={polls.filter((p) => p.status === "open").length} icon={<IconVote size={15} />} />
+          <PollStat label="Erledigt" value={polls.filter((p) => p.voted).length} icon={<IconCheck size={15} />} />
+          <PollStat label="Mit Frist" value={polls.filter((p) => p.status === "open" && p.closes_at).length} icon={<IconClock size={15} />} />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3">
         {polls?.map((p) => (
           <Link key={p.id} href={`/polls/${p.id}`}>
-            <Card>
-              <div className="mb-1.5 flex items-start justify-between gap-2">
-                <h2 className="font-medium leading-snug">{p.question}</h2>
+            <Card className="p-4">
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <h2 className="font-display text-h2 leading-tight">{p.question}</h2>
                 <PollStatusPill status={p.status} />
               </div>
-              <div className="flex items-center justify-between text-[12px] text-muted">
-                <span>
-                  {methodLabel[p.method]}
-                  {p.method === "ranked" && p.rank_limit ? ` · Top ${p.rank_limit}` : ""}
-                  {p.ranked_veto_enabled ? " · Veto" : ""}
-                  {p.anonymous ? " · anonym" : ""} · {p.total_ballots} {p.total_ballots === 1 ? "Stimme" : "Stimmen"}
-                </span>
-                {p.status === "open" && p.closes_at && <span>{until(p.closes_at)}</span>}
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                <MetaChip>{methodLabel[p.method]}{p.method === "ranked" && p.rank_limit ? ` Top ${p.rank_limit}` : ""}</MetaChip>
+                {p.ranked_veto_enabled && <MetaChip>Veto</MetaChip>}
+                {p.anonymous && <MetaChip>Anonym</MetaChip>}
+              </div>
+              <div className="flex items-center justify-between gap-3 text-[12px] text-muted">
+                <span className="tabular">{p.total_ballots} {p.total_ballots === 1 ? "Stimme" : "Stimmen"}</span>
+                {p.status === "open" && p.closes_at && <span className="shrink-0">{until(p.closes_at)}</span>}
               </div>
               {p.voted && p.status === "open" && (
-                <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-success">
+                <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-success">
                   <IconCheck size={13} />
                   Du hast abgestimmt
                 </p>
@@ -94,6 +107,26 @@ export default function PollsPage() {
         />
       )}
     </div>
+  );
+}
+
+function PollStat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
+      <div className="mb-1 flex items-center justify-between text-muted">
+        {icon}
+        <span className="tabular text-[18px] font-semibold text-text">{value}</span>
+      </div>
+      <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] text-muted">{label}</p>
+    </div>
+  );
+}
+
+function MetaChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full bg-[color:var(--surface-2)] px-2.5 py-1 text-[11px] font-medium text-muted">
+      {children}
+    </span>
   );
 }
 

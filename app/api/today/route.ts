@@ -54,7 +54,7 @@ export async function GET(req: Request) {
   // 3. Kommt: kommende Events mit Meilenstein-Fortschritt.
   const upcoming = await db
     .prepare(
-      `SELECT e.id, e.title, e.status, e.start_at,
+      `SELECT e.id, e.title, e.status, e.start_at, e.money_goal_cents, e.money_goal_note,
               (SELECT COUNT(*) FROM milestones m WHERE m.event_id = e.id AND m.deleted_at IS NULL) AS total_count,
               (SELECT COUNT(*) FROM milestones m WHERE m.event_id = e.id AND m.deleted_at IS NULL AND m.done = 1) AS done_count
        FROM events e

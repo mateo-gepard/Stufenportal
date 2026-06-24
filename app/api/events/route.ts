@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, batch } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { newId, nowIso, readJson, trimmed, str, int, oneOf } from "@/lib/util";
+import { parseMoneyGoalCents, parseMoneyGoalNote } from "@/lib/eventGoals";
 import type { EventSummary, EventStatus } from "@/lib/types";
 import type { InValue } from "@libsql/client";
 
@@ -14,6 +15,7 @@ async function listEvents(): Promise<EventSummary[]> {
   return getDb()
     .prepare(
       `SELECT e.id, e.title, e.status, e.start_at,
+              e.money_goal_cents, e.money_goal_note,
               (SELECT COUNT(*) FROM milestones m WHERE m.event_id = e.id AND m.deleted_at IS NULL) AS total_count,
               (SELECT COUNT(*) FROM milestones m WHERE m.event_id = e.id AND m.deleted_at IS NULL AND m.done = 1) AS done_count
        FROM events e
@@ -37,11 +39,14 @@ export async function POST(req: Request) {
 
   const id = newId();
   const status = oneOf<EventStatus>(body.status, STATUSES, "planning");
+  const moneyGoalCents = parseMoneyGoalCents(body.money_goal_cents);
+  if (moneyGoalCents instanceof Error) return NextResponse.json({ error: moneyGoalCents.message }, { status: 400 });
+  const moneyGoalNote = parseMoneyGoalNote(body.money_goal_note, moneyGoalCents);
 
   const stmts: { sql: string; args: InValue[] }[] = [];
   stmts.push({
-    sql: `INSERT INTO events (id,title,description,type,status,start_at,created_at) VALUES (?,?,?,?,?,?,?)`,
-    args: [id, title, str(body.description), "event", status, str(body.start_at) || null, nowIso()],
+    sql: `INSERT INTO events (id,title,description,type,status,start_at,money_goal_cents,money_goal_note,created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+    args: [id, title, str(body.description), "event", status, str(body.start_at) || null, moneyGoalCents, moneyGoalNote, nowIso()],
   });
 
   const milestones = Array.isArray(body.milestones) ? body.milestones : [];

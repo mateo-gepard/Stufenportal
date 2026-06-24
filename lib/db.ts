@@ -93,6 +93,8 @@ async function migrate(): Promise<void> {
       start_at    TEXT,
       end_at      TEXT,
       cover_url   TEXT,
+      money_goal_cents INTEGER,
+      money_goal_note  TEXT,
       created_at  TEXT NOT NULL,
       deleted_at  TEXT
     );
@@ -289,6 +291,8 @@ async function migrate(): Promise<void> {
 
   await addColumnIfMissing("polls", "rank_limit", "INTEGER");
   await addColumnIfMissing("polls", "ranked_veto_enabled", "INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("events", "money_goal_cents", "INTEGER");
+  await addColumnIfMissing("events", "money_goal_note", "TEXT");
 }
 
 async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {

@@ -5,8 +5,8 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import type { TodayDigest } from "@/lib/types";
 import { Card, SectionLabel, MilestoneBar, SignalDot, SkeletonList } from "@/components/ui";
-import { IconCheck, IconSparkle } from "@/components/icons";
-import { until, relativeDay } from "@/lib/format";
+import { IconCalendar, IconCheck, IconClock, IconSparkle, IconTarget, IconVote } from "@/components/icons";
+import { money, until, relativeDay } from "@/lib/format";
 
 export default function TodayPage() {
   const [data, setData] = useState<TodayDigest | null>(null);
@@ -34,11 +34,17 @@ export default function TodayPage() {
 
       {data && (
         <>
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <DigestTile icon={<IconClock size={16} />} label="Dringend" value={data.urgent.length} />
+            <DigestTile icon={<IconCalendar size={16} />} label="Events" value={data.upcoming.length} />
+            <DigestTile icon={<IconVote size={16} />} label="Votes" value={data.openPolls.length} />
+          </div>
+
           {data.featuredNews.length > 0 && (
             <section>
               {data.featuredNews.map((n) => (
                 <Link key={n.id} href="/news" className="mb-3 block">
-                  <Card className="border-l-2" >
+                  <Card className="border-l-4 p-4" >
                     <div className="mb-1.5 flex items-center gap-2">
                       <SignalDot />
                       <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -55,11 +61,12 @@ export default function TodayPage() {
 
           {data.urgent.length > 0 && (
             <section>
-              <SectionLabel>Dringend</SectionLabel>
-              <div className="flex flex-col gap-2.5">
+              <SectionLabel>Agenda</SectionLabel>
+              <div className="relative flex flex-col gap-3 pl-4 before:absolute before:bottom-3 before:left-1 before:top-3 before:w-px before:bg-line">
                 {data.urgent.map((u) => (
-                  <Link key={u.type + u.id} href={u.type === "poll" ? `/polls/${u.id}` : `/events/${u.id}`}>
-                    <Card className="flex items-center justify-between">
+                  <Link key={u.type + u.id} href={u.type === "poll" ? `/polls/${u.id}` : `/events/${u.id}`} className="relative">
+                    <span className="absolute -left-[18px] top-5 h-3 w-3 rounded-full border-2 border-bg bg-[color:var(--warning)]" />
+                    <Card className="flex items-center justify-between p-4">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{u.title}</p>
                         <p className="text-[12px] text-muted">{u.type === "poll" ? "Abstimmung" : "Event"}</p>
@@ -75,10 +82,10 @@ export default function TodayPage() {
           {data.upcoming.length > 0 && (
             <section>
               <SectionLabel>Kommt</SectionLabel>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {data.upcoming.map((e) => (
                   <Link key={e.id} href={`/events/${e.id}`}>
-                    <Card>
+                    <Card className="p-4">
                       <div className="mb-2 flex items-start justify-between gap-2">
                         <p className="font-medium leading-snug">{e.title}</p>
                         {e.start_at && (
@@ -87,10 +94,16 @@ export default function TodayPage() {
                       </div>
                       <MilestoneBar done={e.done_count} total={e.total_count} />
                       {e.total_count > 0 && (
-                        <p className="mt-1.5 text-[12px] text-muted">
+                        <p className="mt-2 text-[12px] text-muted">
                           {e.done_count} von {e.total_count} Schritten
                         </p>
                       )}
+                      {e.money_goal_cents ? (
+                        <p className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[color:var(--signal-text)]">
+                          <IconTarget size={13} />
+                          Kassenziel {money(e.money_goal_cents)}
+                        </p>
+                      ) : null}
                     </Card>
                   </Link>
                 ))}
@@ -101,10 +114,10 @@ export default function TodayPage() {
           {data.openPolls.length > 0 && (
             <section>
               <SectionLabel>Offene Abstimmungen</SectionLabel>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {data.openPolls.map((p) => (
                   <Link key={p.id} href={`/polls/${p.id}`}>
-                    <Card className="flex items-center justify-between">
+                    <Card className="flex items-center justify-between p-4">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{p.question}</p>
                         <p className="text-[12px] text-muted">
@@ -149,6 +162,18 @@ export default function TodayPage() {
             )}
         </>
       )}
+    </div>
+  );
+}
+
+function DigestTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
+      <div className="mb-1 flex items-center justify-between text-muted">
+        {icon}
+        <span className="tabular text-[18px] font-semibold text-text">{value}</span>
+      </div>
+      <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] text-muted">{label}</p>
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { useApp } from "@/components/AppContext";
 import type { EventSummary } from "@/lib/types";
 import { Card, MilestoneBar, EventStatusPill, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
-import { relativeDay } from "@/lib/format";
+import { centsFromEuroInput, money, relativeDay } from "@/lib/format";
+import { IconCalendar, IconPlus, IconTarget } from "@/components/icons";
 
 export default function EventsPage() {
   const { admin } = useApp();
@@ -27,7 +28,8 @@ export default function EventsPage() {
         <h1 className="font-display text-display">Events</h1>
         {admin && (
           <Button onClick={() => setOpen(true)} variant="primary">
-            + Neu
+            <IconPlus size={17} />
+            Neu
           </Button>
         )}
       </header>
@@ -39,23 +41,22 @@ export default function EventsPage() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-2.5">
-        {events?.map((e) => (
-          <Link key={e.id} href={`/events/${e.id}`}>
-            <Card>
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <h2 className="font-medium leading-snug">{e.title}</h2>
-                <EventStatusPill status={e.status} />
-              </div>
-              <MilestoneBar done={e.done_count} total={e.total_count} />
-              <div className="mt-1.5 flex items-center justify-between text-[12px] text-muted">
-                <span>
-                  {e.total_count > 0 ? `${e.done_count} von ${e.total_count} Schritten` : "Keine Meilensteine"}
-                </span>
-                {e.start_at && <span>{relativeDay(e.start_at)}</span>}
-              </div>
-            </Card>
-          </Link>
+      <div className="space-y-5">
+        {events && groupEvents(events).map((group) => (
+          <section key={group.label}>
+            <div className="mb-2 flex items-center gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+              <span className="h-px flex-1 bg-line" />
+              {group.label}
+              <span className="h-px flex-1 bg-line" />
+            </div>
+            <div className="flex flex-col gap-3">
+              {group.events.map((e) => (
+                <Link key={e.id} href={`/events/${e.id}`}>
+                  <EventCard event={e} />
+                </Link>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
 
@@ -73,6 +74,45 @@ export default function EventsPage() {
   );
 }
 
+function groupEvents(events: EventSummary[]) {
+  const groups = new Map<string, EventSummary[]>();
+  events.forEach((event) => {
+    const label = event.start_at ? relativeDay(event.start_at) : event.status === "idea" ? "Ideen" : "Ohne Datum";
+    groups.set(label, [...(groups.get(label) || []), event]);
+  });
+  return Array.from(groups.entries()).map(([label, groupedEvents]) => ({ label, events: groupedEvents }));
+}
+
+function EventCard({ event }: { event: EventSummary }) {
+  const progress = event.total_count > 0 ? Math.round((event.done_count / event.total_count) * 100) : 0;
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex gap-3 p-4">
+        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+          <IconCalendar size={20} />
+          {event.start_at && <span className="mt-0.5 text-[10px] font-semibold text-muted">{relativeDay(event.start_at).slice(0, 3)}</span>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex items-start justify-between gap-2">
+            <h2 className="font-display text-h2 leading-tight">{event.title}</h2>
+            <EventStatusPill status={event.status} />
+          </div>
+          <MilestoneBar done={event.done_count} total={event.total_count} />
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
+            <span>{event.total_count > 0 ? `${progress}% erledigt` : "Noch keine Schritte"}</span>
+            {event.money_goal_cents ? (
+              <span className="inline-flex items-center gap-1 text-[color:var(--signal-text)]">
+                <IconTarget size={13} />
+                {money(event.money_goal_cents)}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function CreateEventSheet({
   open,
   onClose,
@@ -87,6 +127,8 @@ function CreateEventSheet({
   const [start, setStart] = useState("");
   const [status, setStatus] = useState("planning");
   const [milestones, setMilestones] = useState("");
+  const [moneyGoal, setMoneyGoal] = useState("");
+  const [moneyGoalNote, setMoneyGoalNote] = useState("");
   const [listTitle, setListTitle] = useState("");
   const [overflow, setOverflow] = useState("block");
   const [slots, setSlots] = useState("");
@@ -95,6 +137,8 @@ function CreateEventSheet({
 
   async function submit() {
     if (!title.trim()) return setErr("Titel fehlt.");
+    const moneyGoalCents = centsFromEuroInput(moneyGoal);
+    if (moneyGoal.trim() && moneyGoalCents == null) return setErr("Kassenziel ist ungültig.");
     setBusy(true);
     setErr("");
     try {
@@ -122,6 +166,8 @@ function CreateEventSheet({
           description,
           start_at: start ? new Date(start).toISOString() : null,
           status,
+          money_goal_cents: moneyGoalCents,
+          money_goal_note: moneyGoalNote,
           milestones: ms,
           lists,
         },
@@ -130,6 +176,8 @@ function CreateEventSheet({
       setDescription("");
       setStart("");
       setMilestones("");
+      setMoneyGoal("");
+      setMoneyGoalNote("");
       setListTitle("");
       setSlots("");
       onCreated();
@@ -171,6 +219,16 @@ function CreateEventSheet({
           placeholder={"Standplatz klären\nBackliste füllen"}
         />
       </Field>
+      <div className="rounded-xl border border-line bg-surface p-3">
+        <Field label="Kassenziel (€)" hint="Optionaler Planwert. Er erscheint separat in der Kasse.">
+          <Input inputMode="decimal" value={moneyGoal} onChange={(e) => setMoneyGoal(e.target.value)} placeholder="0,00" />
+        </Field>
+        {moneyGoal.trim() && (
+          <Field label="Notiz zum Ziel (optional)">
+            <Input value={moneyGoalNote} onChange={(e) => setMoneyGoalNote(e.target.value)} placeholder="z. B. erwartete Einnahme" maxLength={160} />
+          </Field>
+        )}
+      </div>
       <Field label="Eintragungsliste (optional)" hint="Lass das Feld leer, wenn keine Liste nötig ist.">
         <Input value={listTitle} onChange={(e) => setListTitle(e.target.value)} placeholder="z. B. Standdienst" />
       </Field>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireAdmin, isAdmin } from "@/lib/auth";
 import { newId, nowIso, readJson, trimmed, int, oneOf } from "@/lib/util";
+import type { EventGoal } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,8 +29,20 @@ export async function GET() {
 
   const income = rows.filter((r) => r.kind === "income").reduce((a, b) => a + b.amount, 0);
   const expense = rows.filter((r) => r.kind === "expense").reduce((a, b) => a + b.amount, 0);
+  const eventGoals = await db
+    .prepare(
+      `SELECT id, title, status, start_at, money_goal_cents, money_goal_note
+       FROM events
+       WHERE deleted_at IS NULL
+         AND status NOT IN ('done','cancelled')
+         AND money_goal_cents IS NOT NULL
+         AND money_goal_cents > 0
+       ORDER BY (start_at IS NULL), start_at ASC, created_at DESC`
+    )
+    .all<EventGoal>();
+  const eventGoalTotal = eventGoals.reduce((sum, goal) => sum + goal.money_goal_cents, 0);
 
-  return NextResponse.json({ entries, balance: income - expense, income, expense });
+  return NextResponse.json({ entries, balance: income - expense, income, expense, event_goal_total: eventGoalTotal, event_goals: eventGoals });
 }
 
 export async function POST(req: Request) {
