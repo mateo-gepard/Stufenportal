@@ -19,7 +19,7 @@ export function Card({
     <div
       onClick={onClick}
       style={style}
-      className={`rounded-lg border border-line bg-surface p-4 transition-[border-color,background-color,transform] duration-150 ${onClick ? "cursor-pointer active:scale-[0.995]" : ""} ${className}`}
+      className={`rounded-[18px] border border-line bg-surface p-4 transition-[border-color,background-color,transform] duration-150 ${onClick ? "cursor-pointer active:scale-[0.995]" : ""} ${className}`}
     >
       {children}
     </div>
@@ -28,7 +28,7 @@ export function Card({
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-2 mt-5 px-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+    <h2 className="mb-3 mt-6 px-0.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">
       {children}
     </h2>
   );
@@ -57,7 +57,7 @@ const priorityMeta: Record<Priority, { label: string; color: string }> = {
 export function Pill({ label, color, dot = true }: { label: string; color: string; dot?: boolean }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+      className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em]"
       style={{ color, background: "color-mix(in srgb, " + color + " 14%, transparent)" }}
     >
       {dot && <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />}
@@ -89,7 +89,7 @@ export function MilestoneBar({ done, total }: { done: number; total: number }) {
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
-          className="h-1.5 flex-1 rounded-full transition-colors"
+        className="h-1.5 flex-1 rounded-full transition-colors"
           style={{ background: i < done ? "var(--signal)" : "var(--surface-2)" }}
         />
       ))}
@@ -148,21 +148,23 @@ export function BottomSheet({
   }, [open]);
 
   if (!open || !mounted) return null;
+  const portalTarget = document.querySelector(".sp-device") || document.body;
+  const inDevice = portalTarget !== document.body;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal>
+    <div className={`${inDevice ? "absolute" : "fixed"} inset-0 z-[70] flex items-end justify-center`} role="dialog" aria-modal>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div
-        className="sp-sheet relative max-h-[88dvh] w-full max-w-screen-sm overflow-y-auto overscroll-contain rounded-t-[20px] border-t border-line bg-surface px-4 pb-8 pt-2"
-        style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
+        className={`sp-sheet relative max-h-[88dvh] w-full overflow-y-auto overscroll-contain rounded-t-[26px] border-t border-line bg-[color:var(--paper)] px-5 pb-8 pt-2 shadow-[0_-10px_40px_rgba(20,18,12,.25)] ${inDevice ? "" : "max-w-screen-sm"}`}
+        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
       >
-        <div className="sticky top-0 -mx-4 mb-2 bg-surface px-4 pb-2 pt-2">
+        <div className="sticky top-0 -mx-5 mb-2 bg-[color:var(--paper)] px-5 pb-2 pt-2">
           <div className="mx-auto mb-3 h-1 w-10 rounded-full" style={{ background: "var(--surface-2)" }} />
           {title && <h3 className="text-h2 font-semibold">{title}</h3>}
         </div>
         {children}
       </div>
     </div>,
-    document.body
+    portalTarget
   );
 }
 
@@ -182,15 +184,15 @@ export function Button({
   full?: boolean;
 }) {
   const base =
-    "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-40";
+    "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[14px] px-4 text-[15px] font-extrabold transition active:scale-[0.98] disabled:opacity-40";
   const styles: Record<string, string> = {
-    primary: "text-white",
+    primary: "text-white shadow-[3px_3px_0_var(--ink)]",
     ghost: "text-[color:var(--signal-text)]",
     surface: "border border-line text-text",
     danger: "text-white",
   };
   const bg: Record<string, string> = {
-    primary: "var(--signal)",
+    primary: "var(--accent)",
     ghost: "transparent",
     surface: "var(--surface)",
     danger: "var(--danger)",
@@ -217,8 +219,8 @@ export function AdminDots({ onClick }: { onClick: () => void }) {
         onClick();
       }}
       aria-label="Verwalten"
-      className="flex h-9 w-9 items-center justify-center rounded-full"
-      style={{ color: "var(--signal-text)", background: "color-mix(in srgb, var(--signal) 12%, transparent)" }}
+      className="flex h-9 w-9 items-center justify-center rounded-[13px] border border-line"
+      style={{ color: "var(--ink)", background: "var(--card)" }}
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="5" cy="12" r="1.8" />

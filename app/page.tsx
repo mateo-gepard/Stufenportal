@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import type { TodayDigest } from "@/lib/types";
-import { Card, SectionLabel, MilestoneBar, SignalDot, SkeletonList } from "@/components/ui";
-import { IconCalendar, IconCheck, IconClock, IconSparkle, IconTarget, IconVote } from "@/components/icons";
-import { money, until, relativeDay } from "@/lib/format";
+import { Card, SkeletonList } from "@/components/ui";
+import { IconCheck, IconSparkle } from "@/components/icons";
+import { until } from "@/lib/format";
 
 export default function TodayPage() {
   const [data, setData] = useState<TodayDigest | null>(null);
@@ -20,90 +20,82 @@ export default function TodayPage() {
     return () => clearInterval(t);
   }, []);
 
-  const today = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+  const today = new Date();
+  const todayLabel = today.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+  const greeting = today.getHours() < 12 ? "Guten Morgen" : today.getHours() < 18 ? "Hey, heute" : "Guten Abend";
 
   return (
     <div className="sp-in pb-6">
-      <header className="mb-3 flex items-baseline justify-between">
-        <h1 className="font-display text-display">Heute</h1>
-        <span className="text-small text-muted">{today}</span>
-      </header>
-
       {err && <p className="text-small text-danger">{err}</p>}
       {!data && !err && <SkeletonList rows={3} />}
 
       {data && (
         <>
-          <div className="mb-4 grid grid-cols-3 gap-2">
-            <DigestTile icon={<IconClock size={16} />} label="Dringend" value={data.urgent.length} />
-            <DigestTile icon={<IconCalendar size={16} />} label="Events" value={data.upcoming.length} />
-            <DigestTile icon={<IconVote size={16} />} label="Votes" value={data.openPolls.length} />
+          <header className="pt-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted">
+                <span className="h-2.5 w-2.5 rotate-45 bg-[color:var(--accent)]" />
+                Stufenportal - Abi '27
+              </div>
+              <div className="-rotate-2 rounded-[9px] border-2 border-[color:var(--ink)] bg-[color:var(--pop)] px-2.5 py-1 font-display text-[12px] font-extrabold text-[color:var(--ink)] shadow-[2px_2px_0_var(--ink)]">
+                {todayLabel}
+              </div>
+            </div>
+            <h1 className="sp-display mt-4 text-[38px] leading-[0.98]">
+              <span className="bg-[linear-gradient(transparent_58%,var(--pop)_58%)] px-0.5">{greeting}</span>
+            </h1>
+          </header>
+
+          <div className="sp-hero-dark relative mt-5 overflow-hidden rounded-[22px] px-1 py-[18px]">
+            <div className="sp-half absolute -right-3 -top-3 h-[90px] w-[90px] text-white/15" />
+            <div className="absolute left-[18px] top-3.5 text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-50">Die Lage heute</div>
+            <div className="mt-6 flex">
+              <KpiLink href="/polls" value={data.openPolls.length} label="offene Votes" pop />
+              <Divider />
+              <KpiLink href="/events" value={data.upcoming.length} label="Events bald" />
+              <Divider />
+              <div className="flex flex-1 flex-col items-center gap-1 text-center">
+                <span className="font-display text-[42px] font-extrabold leading-[0.9] text-[color:var(--accent)]">{data.urgent.length}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">dringend</span>
+              </div>
+            </div>
           </div>
 
           {data.featuredNews.length > 0 && (
-            <section>
-              {data.featuredNews.map((n) => (
-                <Link key={n.id} href="/news" className="mb-3 block">
-                  <Card className="border-l-4 p-4" >
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <SignalDot />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-                        {n.category}
-                      </span>
-                    </div>
-                    <h2 className="font-display text-h1 leading-tight">{n.title}</h2>
-                    {n.body && <p className="mt-1.5 line-clamp-2 text-small text-muted">{n.body}</p>}
-                  </Card>
+            <section className="mt-[30px]">
+              <div className="relative">
+                <div className="absolute left-3.5 top-[-12px] z-10 inline-flex -rotate-2 items-center gap-1.5 rounded-lg border-2 border-[color:var(--ink)] bg-[color:var(--pop)] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[color:var(--ink)] shadow-[2px_2px_0_var(--ink)]">
+                  Angepinnt
+                </div>
+                <Link href="/news" className="sp-hero-dark relative block overflow-hidden rounded-[22px] px-5 pb-5 pt-7">
+                  <div className="sp-half absolute -bottom-4 -right-4 h-[120px] w-[120px] text-white/15" />
+                  <span className="relative inline-block rounded-md bg-[color:var(--accent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white">
+                    {data.featuredNews[0].category}
+                  </span>
+                  <h2 className="sp-display relative mt-3 text-[23px] leading-[1.08]">{data.featuredNews[0].title}</h2>
+                  {data.featuredNews[0].body && <p className="relative mt-2 line-clamp-2 text-[13.5px] leading-[1.45] opacity-80">{data.featuredNews[0].body}</p>}
+                  <div className="relative mt-3 inline-flex items-center gap-1.5 text-[12px] font-bold text-[color:var(--pop)]">
+                    Anschauen
+                    <span aria-hidden>→</span>
+                  </div>
                 </Link>
-              ))}
-            </section>
-          )}
-
-          {data.urgent.length > 0 && (
-            <section>
-              <SectionLabel>Agenda</SectionLabel>
-              <div className="relative flex flex-col gap-3 pl-4 before:absolute before:bottom-3 before:left-1 before:top-3 before:w-px before:bg-line">
-                {data.urgent.map((u) => (
-                  <Link key={u.type + u.id} href={u.type === "poll" ? `/polls/${u.id}` : `/events/${u.id}`} className="relative">
-                    <span className="absolute -left-[18px] top-5 h-3 w-3 rounded-full border-2 border-bg bg-[color:var(--warning)]" />
-                    <Card className="flex items-center justify-between p-4">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{u.title}</p>
-                        <p className="text-[12px] text-muted">{u.type === "poll" ? "Abstimmung" : "Event"}</p>
-                      </div>
-                      <span className="shrink-0 text-small font-medium text-warning">{until(u.closes_at)}</span>
-                    </Card>
-                  </Link>
-                ))}
               </div>
             </section>
           )}
 
-          {data.upcoming.length > 0 && (
-            <section>
-              <SectionLabel>Kommt</SectionLabel>
-              <div className="flex flex-col gap-3">
-                {data.upcoming.map((e) => (
-                  <Link key={e.id} href={`/events/${e.id}`}>
-                    <Card className="p-4">
-                      <div className="mb-2 flex items-start justify-between gap-2">
-                        <p className="font-medium leading-snug">{e.title}</p>
-                        {e.start_at && (
-                          <span className="shrink-0 text-[12px] text-muted">{relativeDay(e.start_at)}</span>
-                        )}
+          {data.urgent.length > 0 && (
+            <section className="mt-7">
+              <SectionHeading num="01" title="Nächste Fristen" />
+              <div className="flex flex-col gap-0">
+                {data.urgent.map((u) => (
+                  <Link key={u.type + u.id} href={u.type === "poll" ? `/polls/${u.id}` : `/events/${u.id}`} className="flex items-stretch gap-3.5 pb-3">
+                    <DateBubble iso={u.closes_at} />
+                    <Card className="flex flex-1 items-center justify-between gap-2 rounded-2xl p-3.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-[14.5px] font-bold">{u.title}</p>
+                        <p className="text-[12px] text-muted">{u.type === "poll" ? "Abstimmung" : "Event"}</p>
                       </div>
-                      <MilestoneBar done={e.done_count} total={e.total_count} />
-                      {e.total_count > 0 && (
-                        <p className="mt-2 text-[12px] text-muted">
-                          {e.done_count} von {e.total_count} Schritten
-                        </p>
-                      )}
-                      {e.money_goal_cents ? (
-                        <p className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[color:var(--signal-text)]">
-                          <IconTarget size={13} />
-                          Kassenziel {money(e.money_goal_cents)}
-                        </p>
-                      ) : null}
+                      <span className="shrink-0 rounded-md bg-[color:var(--accent)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.04em] text-white">{until(u.closes_at)}</span>
                     </Card>
                   </Link>
                 ))}
@@ -112,36 +104,30 @@ export default function TodayPage() {
           )}
 
           {data.openPolls.length > 0 && (
-            <section>
-              <SectionLabel>Offene Abstimmungen</SectionLabel>
+            <section className="mt-7">
+              <div className="mb-3 flex items-center justify-between">
+                <SectionHeading num="02" title="Die Stufe stimmt ab" compact />
+                <Link href="/polls" className="text-[12.5px] font-bold text-[color:var(--accent)]">Alle</Link>
+              </div>
               <div className="flex flex-col gap-3">
                 {data.openPolls.map((p) => (
                   <Link key={p.id} href={`/polls/${p.id}`}>
-                    <Card className="flex items-center justify-between p-4">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{p.question}</p>
-                        <p className="text-[12px] text-muted">
-                          {p.total_ballots} {p.total_ballots === 1 ? "Stimme" : "Stimmen"}
-                          {p.closes_at ? ` · ${until(p.closes_at)}` : ""}
-                        </p>
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-[color:var(--info-soft)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-[color:var(--info)]">Vote</span>
+                        {p.closes_at && <span className="ml-auto rounded-md border border-[color:var(--pop)] bg-[color:var(--pop-soft)] px-2 py-1 text-[11px] font-bold text-text">{until(p.closes_at)}</span>}
                       </div>
-                      <span
-                        className="shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium"
-                        style={
-                          p.voted
-                            ? { color: "var(--success)", background: "color-mix(in srgb, var(--success) 14%, transparent)" }
-                            : { color: "white", background: "var(--signal)" }
-                        }
-                      >
-                        {p.voted ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <IconCheck size={14} />
-                            Gewählt
+                      <p className="mt-3 text-[15.5px] font-bold leading-tight">{p.question}</p>
+                      <VoteDots count={Math.min(30, Math.max(1, p.total_ballots || 1))} active={Math.min(30, p.total_ballots)} />
+                      <p className="mt-2 text-[11.5px] font-semibold text-muted">
+                        {p.total_ballots} {p.total_ballots === 1 ? "Stimme" : "Stimmen"}
+                        {p.voted && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-success">
+                            <IconCheck size={12} />
+                            gewählt
                           </span>
-                        ) : (
-                          "Abstimmen"
                         )}
-                      </span>
+                      </p>
                     </Card>
                   </Link>
                 ))}
@@ -166,14 +152,47 @@ export default function TodayPage() {
   );
 }
 
-function DigestTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function KpiLink({ href, value, label, pop }: { href: string; value: number; label: string; pop?: boolean }) {
   return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
-      <div className="mb-1 flex items-center justify-between text-muted">
-        {icon}
-        <span className="tabular text-[18px] font-semibold text-text">{value}</span>
+    <Link href={href} className="flex flex-1 flex-col items-center gap-1 text-center text-[color:var(--paper)]">
+      <span className={`font-display text-[42px] font-extrabold leading-[0.9] ${pop ? "text-[color:var(--pop)]" : ""}`}>{value}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">{label}</span>
+    </Link>
+  );
+}
+
+function Divider() {
+  return <div className="w-px self-stretch bg-[repeating-linear-gradient(var(--paper)_0_3px,transparent_3px_7px)] opacity-25" />;
+}
+
+function SectionHeading({ num, title, compact }: { num: string; title: string; compact?: boolean }) {
+  return (
+    <div className={`flex items-center gap-2 ${compact ? "" : "mb-3"}`}>
+      <span className="font-display text-[13px] font-extrabold text-[color:var(--accent)]">{num}</span>
+      <h2 className="font-display text-[18px] font-extrabold">{title}</h2>
+    </div>
+  );
+}
+
+function DateBubble({ iso }: { iso: string }) {
+  const d = new Date(iso);
+  return (
+    <div className="flex w-[54px] shrink-0 flex-col items-center">
+      <div className="flex h-[54px] w-[54px] flex-col items-center justify-center rounded-full border-[2.5px] border-[color:var(--ink)] bg-[color:var(--paper)] leading-none">
+        <span className="font-display text-[21px] font-extrabold">{String(d.getDate()).padStart(2, "0")}</span>
+        <span className="text-[8.5px] font-extrabold uppercase tracking-[0.08em] text-muted">{d.toLocaleDateString("de-DE", { month: "short" }).replace(".", "")}</span>
       </div>
-      <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] text-muted">{label}</p>
+      <div className="my-1 w-[2.5px] flex-1 bg-[repeating-linear-gradient(var(--line-ink)_0_4px,transparent_4px_8px)]" />
+    </div>
+  );
+}
+
+function VoteDots({ count, active }: { count: number; active: number }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-[3px]">
+      {Array.from({ length: count }).map((_, i) => (
+        <span key={i} className="h-2 w-2 rounded-sm" style={{ background: i < active ? "var(--accent)" : "var(--line-ink)" }} />
+      ))}
     </div>
   );
 }

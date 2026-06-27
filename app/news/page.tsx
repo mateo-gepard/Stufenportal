@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { NewsItem, Priority, NewsStatus } from "@/lib/types";
 import {
   Card,
-  PriorityPill,
-  Pill,
   SkeletonList,
   BottomSheet,
   Button,
@@ -16,8 +13,10 @@ import {
   SheetAction,
 } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
-import { IconBookmark, IconPencil, IconRadioOff, IconRadioOn, IconTrash } from "@/components/icons";
-import { dateTime } from "@/lib/format";
+import { IconBookmark, IconMegaphone, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTrash } from "@/components/icons";
+
+const newsFilters = ["Alle", "Wichtig", "Orga", "Sozial"] as const;
+type NewsFilter = (typeof newsFilters)[number];
 
 export default function NewsPage() {
   const { admin } = useApp();
@@ -25,6 +24,7 @@ export default function NewsPage() {
   const [create, setCreate] = useState(false);
   const [editing, setEditing] = useState<NewsItem | null>(null);
   const [sheetFor, setSheetFor] = useState<NewsItem | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<NewsFilter>("Alle");
 
   const load = useCallback(() => {
     (api("/api/news") as Promise<{ news: NewsItem[] }>)
@@ -44,11 +44,21 @@ export default function NewsPage() {
     load();
   }
 
+  const filteredNews = news?.filter((n) => matchesFilter(n, categoryFilter)) ?? null;
+
   return (
     <div className="sp-in pb-6">
-      <header className="mb-3 flex items-center justify-between">
-        <h1 className="font-display text-display">News</h1>
-        {admin && <Button onClick={() => setCreate(true)}>+ Neu</Button>}
+      <header className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <p className="sp-section-kicker">Stufenportal</p>
+          <h1 className="sp-page-title">News</h1>
+        </div>
+        {admin && (
+          <Button onClick={() => setCreate(true)}>
+            <IconPlus size={17} />
+            Neu
+          </Button>
+        )}
       </header>
 
       {!news && <SkeletonList rows={3} />}
@@ -56,22 +66,34 @@ export default function NewsPage() {
         <Card className="text-center text-muted"><p className="py-6">Noch keine News.</p></Card>
       )}
 
-      <div className="flex flex-col gap-2.5">
-        {news?.map((n) => (
-          <Card key={n.id}>
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{n.category}</span>
-              <div className="flex items-center gap-1.5">
-                {n.featured && <Pill label="Auf Heute" color="var(--signal-text)" />}
-                {admin && n.status !== "published" && <Pill label={statusLabel[n.status]} color="var(--text-muted)" />}
-                <PriorityPill priority={n.priority} />
-                {admin && <AdminDots onClick={() => setSheetFor(n)} />}
-              </div>
-            </div>
-            <h2 className="font-display text-h2 leading-tight">{n.title}</h2>
-            {n.body && <p className="mt-1.5 whitespace-pre-wrap text-small text-muted">{n.body}</p>}
-            <p className="mt-2 text-[11px] text-muted">{dateTime(n.published_at || n.created_at)}</p>
-          </Card>
+      {news && news.length > 0 && (
+        <div className="-mx-4 mb-[20px] overflow-x-auto px-4 [scrollbar-width:none]">
+          <div className="flex min-w-max gap-[10px]">
+            {newsFilters.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className="min-h-[48px] rounded-[14px] border px-5 text-[15px] font-extrabold transition active:scale-[0.98]"
+                style={{
+                  borderColor: categoryFilter === cat ? "var(--ink)" : "var(--line)",
+                  background: categoryFilter === cat ? "var(--ink)" : "var(--surface)",
+                  color: categoryFilter === cat ? "white" : "var(--muted)",
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-[18px]">
+        {filteredNews?.map((n) => (
+          n.featured ? (
+            <FeaturedNewsCard key={n.id} item={n} admin={admin} onAdmin={() => setSheetFor(n)} />
+          ) : (
+            <NewsListCard key={n.id} item={n} admin={admin} onAdmin={() => setSheetFor(n)} />
+          )
         ))}
       </div>
 
@@ -135,6 +157,138 @@ const statusLabel: Record<NewsStatus, string> = {
   hidden: "Versteckt",
   archived: "Archiviert",
 };
+
+function FeaturedNewsCard({
+  item,
+  admin,
+  onAdmin,
+}: {
+  item: NewsItem;
+  admin: boolean;
+  onAdmin: () => void;
+}) {
+  return (
+    <article className="relative overflow-hidden rounded-[20px] bg-[color:var(--dark)] p-[22px] text-white shadow-[0_1px_0_rgba(17,51,61,0.04)]">
+      <div className="sp-half absolute bottom-0 right-0 top-0 w-[35%] text-white/16" aria-hidden />
+      <div className="relative">
+        <div className="mb-[18px] flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <NewsBadge label={categoryLabel(item)} tone="light" />
+            {item.priority === "dringend" && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.05em] text-[color:var(--accent)]">
+                <IconMegaphone size={12} strokeWidth={2.3} />
+                Dringend
+              </span>
+            )}
+            {admin && item.status !== "published" && <NewsBadge label={statusLabel[item.status]} tone="muted" />}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-small font-medium text-white/70">{newsDateLabel(item.published_at || item.created_at)}</span>
+            {admin && <AdminDots onClick={onAdmin} />}
+          </div>
+        </div>
+        <h2 className="font-display text-[26px] font-black leading-[1.02]">{item.title}</h2>
+        {item.body && <p className="mt-3 whitespace-pre-wrap text-[17px] font-semibold leading-[1.45] text-white/78">{item.body}</p>}
+      </div>
+    </article>
+  );
+}
+
+function NewsListCard({
+  item,
+  admin,
+  onAdmin,
+}: {
+  item: NewsItem;
+  admin: boolean;
+  onAdmin: () => void;
+}) {
+  const tone = categoryTone(item);
+  return (
+    <article className="relative overflow-hidden rounded-[20px] border border-line bg-surface p-[22px] pl-[28px] shadow-[0_1px_0_rgba(17,51,61,0.03)]">
+      <span className="absolute bottom-0 left-0 top-0 w-[6px]" style={{ background: tone.color }} aria-hidden />
+      <div className="mb-[16px] flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <NewsBadge label={categoryLabel(item)} tone={tone.name} />
+          {item.priority === "dringend" && <NewsBadge label="Dringend" tone="danger" />}
+          {admin && item.status !== "published" && <NewsBadge label={statusLabel[item.status]} tone="muted" />}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="shrink-0 text-small font-semibold text-muted">{newsDateLabel(item.published_at || item.created_at)}</span>
+          {admin && <AdminDots onClick={onAdmin} />}
+        </div>
+      </div>
+      <h2 className="font-display text-[25px] font-black leading-[1.05] text-text">{item.title}</h2>
+      {item.body && <p className="mt-3 whitespace-pre-wrap text-[17px] font-medium leading-[1.45] text-muted">{item.body}</p>}
+    </article>
+  );
+}
+
+function NewsBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "blue" | "green" | "danger" | "light" | "muted";
+}) {
+  const styles = {
+    blue: { background: "var(--info-soft)", color: "var(--info)" },
+    green: { background: "var(--ok-soft)", color: "var(--success)" },
+    danger: { background: "var(--accent-soft)", color: "var(--danger)" },
+    light: { background: "rgba(255,255,255,.16)", color: "white" },
+    muted: { background: "var(--surface-2)", color: "var(--muted)" },
+  }[tone];
+  return (
+    <span
+      className="inline-flex items-center rounded-[7px] px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.04em]"
+      style={styles}
+    >
+      {label}
+    </span>
+  );
+}
+
+function matchesFilter(item: NewsItem, filter: NewsFilter): boolean {
+  if (filter === "Alle") return true;
+  const category = normalizeNewsText(item.category);
+  if (filter === "Wichtig") return item.priority !== "normal" || category.includes("wichtig");
+  if (filter === "Orga") return category.includes("orga") || category.includes("organ");
+  return category.includes("sozial") || category.includes("social");
+}
+
+function categoryLabel(item: NewsItem): string {
+  const category = normalizeNewsText(item.category);
+  if (item.priority !== "normal" || category.includes("wichtig")) return "Wichtig";
+  if (category.includes("sozial") || category.includes("social")) return "Sozial";
+  if (category.includes("orga") || category.includes("organ")) return "Orga";
+  return item.category || "Info";
+}
+
+function categoryTone(item: NewsItem): { name: "blue" | "green" | "danger" | "muted"; color: string } {
+  const label = normalizeNewsText(categoryLabel(item));
+  if (item.priority === "dringend") return { name: "danger", color: "var(--accent)" };
+  if (label.includes("sozial")) return { name: "green", color: "var(--success)" };
+  if (label.includes("wichtig") || label.includes("orga")) return { name: "blue", color: "var(--info)" };
+  return { name: "muted", color: "var(--line)" };
+}
+
+function normalizeNewsText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function newsDateLabel(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((start(today) - start(date)) / 864e5);
+  if (diff === 0) return "Heute";
+  if (diff === 1) return "Gestern";
+  if (diff > 1 && diff < 7) return `${diff} Tage`;
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" }).format(date);
+}
 
 function NewsEditor({
   open,

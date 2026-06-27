@@ -148,6 +148,13 @@ export const IconSun = (p: P) => (
   </Svg>
 );
 
+export const IconBell = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" />
+    <path d="M10 19a2 2 0 0 0 4 0" />
+  </Svg>
+);
+
 export const IconEuro = (p: P) => (
   <Svg {...p}>
     <path d="M17 6.5A6.5 6.5 0 1 0 17 17.5" />

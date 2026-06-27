@@ -17,7 +17,7 @@ import {
   SheetAction,
 } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
-import { IconCheck, IconChevronLeft, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTarget, IconTrash } from "@/components/icons";
+import { IconCheck, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTarget, IconTrash, IconUser } from "@/components/icons";
 import { centsFromEuroInput, euroInputValue, money, relativeDay } from "@/lib/format";
 import Comments from "@/components/Comments";
 
@@ -89,40 +89,49 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/events" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        <IconChevronLeft size={15} />
-        Events
-      </Link>
-
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <h1 className="font-display text-h1 leading-tight">{ev.title}</h1>
-        {admin && <AdminDots onClick={() => setAdminSheet(true)} />}
+      <header className="mb-3 rounded-[24px] bg-[color:var(--dark)] p-5 text-white shadow-[6px_6px_0_color-mix(in_srgb,var(--ink)_18%,transparent)]">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/60">Event</p>
+            <h1 className="font-display text-[34px] font-black leading-[0.92] tracking-normal">{ev.title}</h1>
+          </div>
+          {admin && <AdminDots onClick={() => setAdminSheet(true)} />}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-md bg-white/12 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.05em]">
+            {statusLabel(ev.status)}
+          </span>
+          {ev.start_at && (
+            <span className="rounded-md bg-[color:var(--pop)] px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.05em] text-[color:var(--ink)]">
+              {relativeDay(ev.start_at)}
+            </span>
+          )}
+        </div>
       </header>
 
-      <div className="mb-3 flex items-center gap-2">
-        <EventStatusPill status={ev.status} />
-        {ev.start_at && <span className="text-small text-muted">{relativeDay(ev.start_at)}</span>}
-      </div>
-
-      {ev.description && <p className="mb-4 whitespace-pre-wrap text-body text-muted">{ev.description}</p>}
+      {ev.description && (
+        <p className="mb-4 whitespace-pre-wrap rounded-[18px] border border-line bg-[color:var(--soft)] px-4 py-3 text-[15px] leading-relaxed text-muted">
+          {ev.description}
+        </p>
+      )}
 
       {ev.money_goal_cents ? (
-        <div className="mb-5 flex items-start gap-3 rounded-lg border border-line bg-surface p-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+        <div className="mb-5 flex items-start gap-3 rounded-[18px] border-2 border-dashed border-[color:var(--pop)] bg-[color:var(--pop-soft)] p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-white text-[color:var(--warn)]">
             <IconTarget size={20} />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenziel</p>
-            <p className="tabular font-display text-h2">{money(ev.money_goal_cents)}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Kassenziel</p>
+            <p className="tabular font-display text-[26px] font-black leading-none">{money(ev.money_goal_cents)}</p>
             {ev.money_goal_note && <p className="mt-1 text-small text-muted">{ev.money_goal_note}</p>}
           </div>
         </div>
       ) : null}
 
       {/* Meilensteine */}
-      <section className="mb-5">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Fortschritt</h2>
+      <section className="mb-5 rounded-[20px] border border-line bg-surface p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Fortschritt</h2>
           <span className="text-[12px] text-muted">
             {ev.done_count} / {ev.total_count}
           </span>
@@ -132,7 +141,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
           {ev.milestones.map((m) => (
             <div
               key={m.id}
-              className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2.5"
+              className="flex items-center gap-3 rounded-[14px] bg-[color:var(--soft)] px-3 py-2.5"
             >
               <button
                 onClick={() => admin && toggleMs(m.id, m.done)}
@@ -174,7 +183,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       {/* Eintragungslisten */}
       {ev.lists.map((list) => (
         <section key={list.id} className="mb-5">
-          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{list.title}</h2>
+          <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">{list.title}</h2>
           <div className="flex flex-col gap-2.5">
             {list.slots.map((slot) => (
               <SlotRow key={slot.id} slot={slot} onChanged={load} onJoin={() => setJoinSlot(slot)} />
@@ -239,17 +248,22 @@ function SlotRow({ slot, onChanged, onJoin }: { slot: Slot; onChanged: () => voi
   }
   const cap = slot.capacity != null ? `${slot.taken}/${slot.capacity}` : `${slot.taken}`;
   return (
-    <Card>
-      <div className="mb-1.5 flex items-center justify-between">
-        <p className="font-medium">{slot.label}</p>
-        <span className="tabular text-[12px] text-muted">{cap}</span>
+    <Card className="p-3.5">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] bg-[color:var(--info-soft)] text-[color:var(--info)]">
+            <IconUser size={18} />
+          </span>
+          <p className="truncate font-extrabold">{slot.label}</p>
+        </div>
+        <span className="tabular rounded-md bg-[color:var(--surface-2)] px-2 py-1 text-[12px] font-bold text-muted">{cap}</span>
       </div>
       {slot.signups.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {slot.signups.map((s) => (
             <span
               key={s.id}
-              className="rounded-full px-2.5 py-1 text-[12px]"
+              className="rounded-md px-2.5 py-1 text-[12px] font-bold"
               style={{
                 background: s.status === "waitlist" ? "var(--surface-2)" : "color-mix(in srgb, var(--signal) 12%, transparent)",
                 color: s.status === "waitlist" ? "var(--text-muted)" : "var(--signal-text)",
@@ -277,6 +291,17 @@ function SlotRow({ slot, onChanged, onJoin }: { slot: Slot; onChanged: () => voi
       )}
     </Card>
   );
+}
+
+function statusLabel(status: EventDetail["status"]): string {
+  const labels: Record<EventDetail["status"], string> = {
+    idea: "Idee",
+    planning: "In Planung",
+    active: "Aktiv",
+    done: "Erledigt",
+    cancelled: "Abgesagt",
+  };
+  return labels[status];
 }
 
 function JoinSheet({ slot, onClose, onJoined }: { slot: Slot | null; onClose: () => void; onJoined: () => void }) {

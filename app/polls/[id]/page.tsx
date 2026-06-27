@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
-import type { PollDetail } from "@/lib/types";
-import { Skeleton, PollStatusPill, Button, AdminDots, BottomSheet, SheetAction } from "@/components/ui";
+import type { PollDetail, PollResultRow } from "@/lib/types";
+import { Skeleton, Button, AdminDots, BottomSheet, SheetAction } from "@/components/ui";
 import { Field, Input } from "@/components/form";
-import { IconCheck, IconChevronLeft, IconPlay, IconPlus, IconStar, IconStop, IconTrash } from "@/components/icons";
-import { until, dateTime } from "@/lib/format";
+import { IconCheck, IconPlay, IconPlus, IconStop, IconTrash, IconVote } from "@/components/icons";
 
 export default function PollDetailPage({ params }: { params: { id: string } }) {
   const { admin } = useApp();
@@ -127,39 +126,29 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   const visibleResults = poll.results ? (resultsExpanded ? poll.results : poll.results.slice(0, 3)) : null;
   const resultCount = poll.results?.length ?? 0;
   const hasMoreResults = resultCount > 3;
+  const votedOptionIds = new Set(poll.my_choice.map((choice) => choice.option_id));
+  const showVotingSurface = poll.status === "open";
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/polls" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        <IconChevronLeft size={15} />
-        Abstimmungen
-      </Link>
-
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <h1 className="font-display text-h1 leading-tight">{poll.question}</h1>
-        {admin && <AdminDots onClick={() => setSheet(true)} />}
-      </header>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-small text-muted">
-        <PollStatusPill status={poll.status} />
-        {poll.anonymous && <span>· anonym</span>}
-        {poll.method === "ranked" && <span>· Top {rankLimitForPoll(poll)}</span>}
-        {poll.ranked_veto_enabled && <span>· Veto</span>}
-        <span>· {poll.total_ballots} {poll.total_ballots === 1 ? "Stimme" : "Stimmen"}</span>
-        {poll.status === "open" && poll.closes_at && <span>· {until(poll.closes_at)}</span>}
-      </div>
+      {admin && (
+        <div className="mb-3 flex justify-end">
+          <AdminDots onClick={() => setSheet(true)} />
+        </div>
+      )}
 
       {/* Abstimmen */}
-      {canVote && (
+      {showVotingSurface && (
         <section className="mb-5">
           {poll.method === "single" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-[12px]">
               {poll.options.map((o) => (
                 <OptionRow
                   key={o.id}
                   label={o.label}
-                  selected={single === o.id}
+                  selected={canVote ? single === o.id : votedOptionIds.has(o.id)}
                   control="radio"
+                  disabled={!canVote}
                   onClick={() => setSingle(o.id)}
                 />
               ))}
@@ -167,15 +156,16 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           )}
 
           {poll.method === "approval" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-[12px]">
               {poll.options.map((o) => {
                 const on = approval.includes(o.id);
                 return (
                   <OptionRow
                     key={o.id}
                     label={o.label}
-                    selected={on}
+                    selected={canVote ? on : votedOptionIds.has(o.id)}
                     control="check"
+                    disabled={!canVote}
                     onClick={() => setApproval((p) => (on ? p.filter((x) => x !== o.id) : [...p, o.id]))}
                   />
                 );
@@ -184,23 +174,40 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           )}
 
           {poll.method === "ranked" && (
-            <RankedPicker
-              options={poll.options}
-              ranking={ranking}
-              setRanking={setRanking}
-              veto={veto}
-              setVeto={setVeto}
-              rankLimit={rankLimitForPoll(poll)}
-              vetoEnabled={poll.ranked_veto_enabled}
-            />
+            canVote ? (
+              <RankedPicker
+                options={poll.options}
+                ranking={ranking}
+                setRanking={setRanking}
+                veto={veto}
+                setVeto={setVeto}
+                rankLimit={rankLimitForPoll(poll)}
+                vetoEnabled={poll.ranked_veto_enabled}
+              />
+            ) : (
+              <div className="flex flex-col gap-[12px]">
+                {poll.options.map((o) => (
+                  <OptionRow
+                    key={o.id}
+                    label={o.label}
+                    selected={votedOptionIds.has(o.id)}
+                    control="check"
+                    disabled
+                    onClick={() => undefined}
+                  />
+                ))}
+              </div>
+            )
           )}
 
-          {poll.anonymous && (
-            <div className="mt-3 rounded-xl border border-line bg-surface p-3">
-              <div className="mb-3 rounded-lg bg-[color:var(--surface-2)] px-3 py-2.5 text-[12px] leading-relaxed text-muted">
-                Dein Name wird nur serverseitig mit der Stufenliste verglichen. Die Schreibweise ist egal:
-                Vorname, Nachname oder beides funktioniert, solange der Treffer eindeutig ist. Deine Auswahl
-                bleibt anonym und wird nicht mit deinem Namen angezeigt.
+          {canVote && poll.anonymous && (
+            <div className="mt-3 rounded-[18px] border border-line bg-surface p-3">
+              <div className="mb-3 flex gap-3 rounded-[14px] bg-[color:var(--info-soft)] px-3 py-2.5 text-[12px] leading-relaxed text-[color:var(--info)]">
+                <IconVote size={18} className="mt-0.5 shrink-0" />
+                <p>
+                  Gib zur Prüfung deinen Namen ein. Vorname, Nachname oder beides funktioniert, Groß- und
+                  Kleinschreibung ist egal. Der Name wird nicht angezeigt und nicht mit deiner Auswahl veröffentlicht.
+                </p>
               </div>
               <Field
                 label="Name zur Prüfung"
@@ -219,8 +226,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          {err && <p className="mt-3 text-small text-danger">{err}</p>}
-          {poll.anonymous && err === "Mit diesem Namen wurde schon abgestimmt." && (
+          {canVote && err && <p className="mt-3 text-small text-danger">{err}</p>}
+          {canVote && poll.anonymous && err === "Mit diesem Namen wurde schon abgestimmt." && (
             <div className="mt-2 rounded-xl border border-line bg-surface p-3">
               <p className="mb-2 text-[12px] text-muted">
                 Falls du sicher nicht abgestimmt hast, melde den Namenskonflikt. Das Sprecher-Team sieht dann
@@ -235,9 +242,9 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
               )}
             </div>
           )}
-          <Button onClick={vote} disabled={busy} full>
-            {busy ? "Senden…" : "Stimme abgeben"}
-          </Button>
+          <VoteSubmitButton onClick={vote} disabled={busy || !canVote}>
+            {busy ? "Senden…" : poll.voted ? "Stimme abgegeben" : "Stimme abgeben"}
+          </VoteSubmitButton>
           <p className="mt-2 text-center text-[12px] text-muted">
             {poll.anonymous
               ? "Eine Stimme pro Name aus der Stufenliste. Deine Auswahl bleibt anonym."
@@ -246,45 +253,19 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
         </section>
       )}
 
-      {poll.voted && poll.status === "open" && (
-        <div
-          className="mb-5 rounded-xl px-4 py-3 text-small font-medium"
-          style={{ color: "var(--success)", background: "color-mix(in srgb, var(--success) 12%, transparent)" }}
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <IconCheck size={15} />
-            Du hast abgestimmt. Danke!
-          </span>
-        </div>
-      )}
-
       {/* Ergebnis */}
       <section>
-        <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Ergebnis</h2>
+        <div className="mb-[14px] flex items-center justify-between gap-3">
+          <h2 className="font-display text-[24px] font-black leading-none">Ergebnis</h2>
+          <span className="tabular text-small font-semibold text-muted">
+            {poll.total_ballots} {poll.total_ballots === 1 ? "Stimme" : "Stimmen"}
+          </span>
+        </div>
         {visibleResults ? (
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-[13px]">
+            {winner && <LeaderResultCard poll={poll} winner={winner} />}
             {visibleResults.map((r, i) => (
-              <div key={r.option_id} className="rounded-lg border border-line bg-surface p-3">
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2 font-medium">
-                    {i === 0 && winner && winner.value > 0 && poll.status !== "open" && (
-                      <IconStar size={16} style={{ color: "var(--signal-text)" }} />
-                    )}
-                    <span className="truncate">{r.label}</span>
-                  </span>
-                  <span className="tabular shrink-0 text-small text-muted">
-                    {poll.method === "ranked"
-                      ? `${r.value} Pkt${poll.ranked_veto_enabled ? ` · ${vetoLabel(r.veto_count ?? 0)}` : ""}`
-                      : `${r.value} · ${r.pct}%`}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, r.pct)}%`, background: i === 0 ? "var(--signal)" : "color-mix(in srgb, var(--signal) 55%, var(--surface-2))" }}
-                  />
-                </div>
-              </div>
+              <ResultRow key={r.option_id} poll={poll} row={r} rank={i + 1} />
             ))}
             {hasMoreResults && (
               <Button onClick={() => setResultsExpanded((v) => !v)} variant="surface" full>
@@ -310,30 +291,126 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   );
 }
 
+function LeaderResultCard({ poll, winner }: { poll: PollDetail; winner: PollResultRow }) {
+  const metric =
+    poll.method === "ranked"
+      ? `${winner.value} Pkt${poll.ranked_veto_enabled ? ` · ${vetoLabel(winner.veto_count ?? 0)}` : ""}`
+      : `${winner.value} Stimmen`;
+  return (
+    <div className="relative mb-1 min-h-[132px] overflow-hidden rounded-[20px] bg-[color:var(--dark)] p-[22px] text-white">
+      <div className="sp-half absolute bottom-0 right-0 top-0 w-[38%] text-white/18" aria-hidden />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="mb-[26px] text-[11px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--pop)]">
+            Führt aktuell
+          </p>
+          <h3 className="truncate font-display text-[28px] font-black leading-none">{winner.label}</h3>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="tabular font-display text-[34px] font-black leading-none text-[color:var(--pop)]">{winner.pct}%</p>
+          <p className="tabular text-[12px] font-extrabold text-white/70">{metric}</p>
+        </div>
+      </div>
+      <div className="absolute bottom-[20px] left-[22px] right-[22px] flex h-[10px] gap-1.5" aria-hidden>
+        <span className="rounded-full bg-[color:var(--accent)]" style={{ flex: Math.max(12, winner.pct) }} />
+        <span className="rounded-full bg-[color:var(--dark2)]" style={{ flex: Math.max(12, 100 - winner.pct) }} />
+        <span className="w-[34px] rounded-full bg-[color:var(--warn)]" />
+      </div>
+    </div>
+  );
+}
+
+function ResultRow({ poll, row, rank }: { poll: PollDetail; row: PollResultRow; rank: number }) {
+  const isFirst = rank === 1;
+  const metric =
+    poll.method === "ranked"
+      ? `${row.value} Pkt${poll.ranked_veto_enabled ? ` · ${vetoLabel(row.veto_count ?? 0)}` : ""}`
+      : `${row.value} Stimmen`;
+  return (
+    <div className="pb-[5px]">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="tabular flex h-[27px] w-[27px] shrink-0 items-center justify-center rounded-[9px] text-[14px] font-extrabold"
+            style={{
+              background: isFirst ? "var(--accent)" : "var(--surface-2)",
+              color: isFirst ? "white" : "var(--muted)",
+            }}
+          >
+            {rank}
+          </span>
+          <span className="truncate font-display text-[19px] font-black leading-tight">{row.label}</span>
+        </div>
+        <span className="tabular shrink-0 text-[15px] font-extrabold text-text">{metric}</span>
+      </div>
+      <div className="h-[10px] overflow-hidden rounded-full bg-[color:var(--surface-2)]">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${Math.min(100, row.pct)}%`,
+            background: isFirst ? "var(--accent)" : "var(--dark)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function VoteSubmitButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="mt-[20px] flex min-h-[58px] w-full items-center justify-center rounded-[16px] px-4 text-[17px] font-extrabold transition active:scale-[0.98] disabled:cursor-default"
+      style={{
+        background: disabled ? "var(--line)" : "var(--accent)",
+        color: disabled ? "var(--faint)" : "white",
+        boxShadow: disabled ? "none" : "3px 3px 0 var(--ink)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function OptionRow({
   label,
   selected,
   control,
+  disabled = false,
   onClick,
 }: {
   label: string;
   selected: boolean;
   control: "radio" | "check";
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      onClick={onClick}
-      className="flex min-h-[52px] w-full items-center gap-3 rounded-xl border bg-surface px-3.5 text-left transition-colors"
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      aria-label={`${control === "radio" ? "Option" : "Auswahl"} ${label}`}
+      className="flex min-h-[70px] w-full items-center gap-4 rounded-[16px] border bg-surface px-[18px] text-left transition-colors active:scale-[0.995] disabled:cursor-default disabled:opacity-100"
       style={{ borderColor: selected ? "var(--signal)" : "var(--border)" }}
     >
       <span
-        className={`flex h-6 w-6 shrink-0 items-center justify-center border-2 ${control === "radio" ? "rounded-full" : "rounded-md"}`}
+        className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[9px] border-2"
         style={{ borderColor: selected ? "var(--signal)" : "var(--border)", background: selected ? "var(--signal)" : "transparent" }}
       >
         {selected && <IconCheck size={13} strokeWidth={3.2} style={{ color: "white" }} />}
       </span>
-      <span className="text-[15px]">{label}</span>
+      <span className="min-w-0 truncate font-display text-[20px] font-black">{label}</span>
     </button>
   );
 }

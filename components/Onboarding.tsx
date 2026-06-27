@@ -1,93 +1,78 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/client";
-import { Button } from "@/components/ui";
-import { Field, Input } from "@/components/form";
-import {
-  IconArrowDown,
-  IconCalendar,
-  IconCheck,
-  IconChevronLeft,
-  IconChevronRight,
-  IconEuro,
-  IconHome,
-  IconMedal,
-  IconMegaphone,
-  IconPencil,
-  IconSliders,
-  IconUser,
-  IconVote,
-} from "@/components/icons";
+import { useEffect, useState } from "react";
+import { useApp } from "@/components/AppContext";
+import { colorThemes, type ColorTheme, type ColorThemeKey } from "@/lib/themes";
 
-const STORAGE_KEY = "sp_onboarding_v1";
+const STORAGE_KEY = "sp_onboarded_v2";
 const SHOW_EVENT = "sp:show-onboarding";
 
-type MainPreview = {
-  id: string;
-  label: string;
+type OnboardingStep = {
+  kind?: "info" | "theme";
+  kicker: string;
   title: string;
-  subtitle: string;
-  icon: React.ReactNode;
-  callouts: string[];
-  rows: { title: string; meta: string; tone?: "signal" | "success" | "warning" }[];
+  body: string;
+  iconBg?: string;
+  iconFg?: string;
+  iconPath?: string;
+  cta: string;
 };
 
-const mainPreviews: MainPreview[] = [
+const steps: OnboardingStep[] = [
   {
-    id: "today",
-    label: "Heute",
-    title: "Heute",
-    subtitle: "Alles Wichtige zuerst",
-    icon: <IconHome size={17} />,
-    callouts: ["News", "Fristen", "Offene Votes"],
-    rows: [
-      { title: "Mottowahl endet bald", meta: "Abstimmung · heute", tone: "warning" },
-      { title: "Sommerfest Planung", meta: "3 von 5 Schritten", tone: "signal" },
-      { title: "Kursfoto hochladen", meta: "Abizeitung", tone: "success" },
-    ],
+    kicker: "Schritt 1",
+    title: "Alles auf einen Blick",
+    body: "Heute bündelt Fristen, kommende Events und offene Abstimmungen. Kein Suchen mehr in zig Chats.",
+    iconBg: "var(--pop)",
+    iconFg: "var(--ink)",
+    iconPath: "M4 17h16M12 4v3M5.5 8.5 7 10M18.5 8.5 17 10M7 17a5 5 0 0 1 10 0",
+    cta: "Weiter",
   },
   {
-    id: "events",
-    label: "Events",
-    title: "Events",
-    subtitle: "Planen und eintragen",
-    icon: <IconCalendar size={17} />,
-    callouts: ["Aufgaben", "Listen", "Fortschritt"],
-    rows: [
-      { title: "Abigag", meta: "In Planung · 6/10", tone: "signal" },
-      { title: "Standdienst", meta: "2 Plätze frei", tone: "success" },
-      { title: "Technikcheck", meta: "morgen", tone: "warning" },
-    ],
+    kicker: "Schritt 2",
+    kind: "theme",
+    title: "Dein Farbthema",
+    body: "Such dir den Look aus, mit dem sich dein Stufenportal am meisten nach eurer Stufe anfühlt.",
+    cta: "Weiter",
   },
   {
-    id: "polls",
-    label: "Abstimmungen",
-    title: "Abstimmungen",
-    subtitle: "Schnell entscheiden",
-    icon: <IconVote size={17} />,
-    callouts: ["Auswahl", "Anonym möglich", "Ergebnis"],
-    rows: [
-      { title: "Abi-Pulli Farbe", meta: "42 Stimmen", tone: "signal" },
-      { title: "Lied für Einlauf", meta: "anonym", tone: "success" },
-      { title: "Termin Klassentreffen", meta: "läuft noch", tone: "warning" },
-    ],
+    kicker: "Schritt 3",
+    title: "Events & Eintragen",
+    body: "Meilensteine, Eintragungslisten mit Warteliste und Kommentare: die ganze Orga pro Event.",
+    iconBg: "var(--info-soft)",
+    iconFg: "var(--info)",
+    iconPath: "M3.5 5h17v15h-17zM3.5 9.5h17M8 3v3.5M16 3v3.5",
+    cta: "Weiter",
+  },
+  {
+    kicker: "Schritt 4",
+    title: "Abstimmen - fair",
+    body: "Single, Mehrfach oder Ranking. Anonyme Votes gleichen den Namen mit der Stufenliste ab, ohne ihn zu zeigen.",
+    iconBg: "var(--accent-soft)",
+    iconFg: "var(--accent)",
+    iconPath: "M5 21h14M7 21V9m5 12V4m5 17v-8",
+    cta: "Weiter",
+  },
+  {
+    kicker: "Fast fertig",
+    title: "Kein Account nötig",
+    body: "Nur eine zufällige Geräte-ID. Deinen Namen fragen wir nur, wenn eine Funktion ihn braucht. Los geht's.",
+    iconBg: "var(--ok-soft)",
+    iconFg: "var(--ok)",
+    iconPath: "M12 3 4 6.5v5c0 4.5 3.3 7.8 8 9.5 4.7-1.7 8-5 8-9.5v-5L12 3Zm-3 8 2 2 4-4",
+    cta: "Los geht's",
   },
 ];
 
 export default function Onboarding() {
+  const { colorTheme, setColorTheme } = useApp();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [activePreview, setActivePreview] = useState(0);
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
 
   useEffect(() => {
     setMounted(true);
     try {
-      setName(localStorage.getItem("sp_name") || "");
       if (localStorage.getItem(STORAGE_KEY) !== "done") setOpen(true);
     } catch {
       setOpen(true);
@@ -97,8 +82,6 @@ export default function Onboarding() {
   useEffect(() => {
     function showOnboarding() {
       setStep(0);
-      setActivePreview(0);
-      setErr("");
       setOpen(true);
     }
     window.addEventListener(SHOW_EVENT, showOnboarding);
@@ -114,342 +97,213 @@ export default function Onboarding() {
     };
   }, [open]);
 
-  async function finish() {
-    const trimmed = name.trim();
-    setBusy(true);
-    setErr("");
+  function finish() {
     try {
-      if (trimmed) {
-        localStorage.setItem("sp_name", trimmed);
-        await api("/api/me", { method: "POST", body: { name: trimmed, show_on_leaderboard: false } });
-      }
       localStorage.setItem(STORAGE_KEY, "done");
-      setOpen(false);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    } catch {}
+    setOpen(false);
   }
 
   function next() {
-    if (step < 2) {
-      setStep((s) => s + 1);
-      setErr("");
+    if (step >= steps.length - 1) {
+      finish();
       return;
     }
-    finish();
+    setStep((current) => current + 1);
   }
 
   if (!mounted || !open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] overflow-hidden bg-[color:var(--bg)] text-text">
-      <div className="mx-auto flex h-[100dvh] max-w-screen-sm flex-col px-4 pb-[96px] pt-4">
-        <div className="mb-2 flex shrink-0 items-center justify-between">
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="h-1.5 rounded-full transition-all"
-                style={{
-                  width: i === step ? 26 : 7,
-                  background: i === step ? "var(--signal)" : "var(--surface-2)",
-                }}
-              />
-            ))}
-          </div>
-          <span className="text-[12px] font-medium text-muted">{step + 1} / 3</span>
-        </div>
+  const current = steps[step] || steps[0];
+  const isThemeStep = current.kind === "theme";
 
-        {step === 0 && <MainScreensStep active={activePreview} setActive={setActivePreview} />}
-        {step === 1 && <MoreStep />}
-        {step === 2 && <NameStep name={name} setName={setName} err={err} />}
+  return (
+    <div className="absolute inset-0 z-[80] flex flex-col overflow-hidden bg-[color:var(--paper)] text-text">
+      <div className="sp-grain" />
+      <div className="relative z-[2] flex shrink-0 items-center justify-between px-[22px] pt-[18px]">
+        <div className="flex gap-1.5">
+          {steps.map((_, index) => (
+            <span
+              key={index}
+              className="h-[7px] rounded transition-all duration-300"
+              style={{
+                width: index === step ? 24 : 7,
+                background: index <= step ? "var(--accent)" : "var(--line)",
+              }}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={finish}
+          className="bg-transparent text-[13px] font-bold text-muted"
+        >
+          Überspringen
+        </button>
+      </div>
+
+      <div className={`relative z-[2] flex min-h-0 flex-1 flex-col px-7 ${isThemeStep ? "justify-start pt-6" : "justify-center py-6"}`}>
+        {isThemeStep ? (
+          <ThemeChoiceStep selected={colorTheme} onSelect={setColorTheme} step={current} />
+        ) : (
+          <>
+            <div
+              className="flex h-[84px] w-[84px] -rotate-2 items-center justify-center rounded-[24px] border-[2.5px] border-[color:var(--ink)] shadow-[4px_4px_0_var(--ink)]"
+              style={{ background: current.iconBg, color: current.iconFg }}
+            >
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d={current.iconPath}
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <p className="mt-[34px] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[color:var(--accent)]">
+              {current.kicker}
+            </p>
+            <h1 className="mt-2 max-w-[310px] font-display text-[34px] font-extrabold leading-[1.02]">
+              {current.title}
+            </h1>
+            <p className="mt-3.5 max-w-[300px] text-[15.5px] leading-[1.55] text-muted">
+              {current.body}
+            </p>
+          </>
+        )}
       </div>
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-[61] border-t border-line bg-surface/95 px-4 pb-4 pt-3 backdrop-blur"
-        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        className="relative z-[2] shrink-0 px-7 pb-7 pt-5"
+        style={{ paddingBottom: "calc(28px + env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto flex max-w-screen-sm items-center gap-3">
-          {step > 0 && (
-            <Button onClick={() => setStep((s) => s - 1)} variant="surface">
-              <IconChevronLeft size={16} />
-              <span className="sr-only">Zurück</span>
-            </Button>
-          )}
-          <Button onClick={next} disabled={busy} full>
-            {busy ? "Speichern..." : step === 2 ? "Fertig" : "Weiter"}
-            {step < 2 && <IconChevronRight size={16} />}
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={next}
+          className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-[color:var(--ink)] p-[17px] text-[16px] font-extrabold text-[color:var(--paper)]"
+        >
+          {current.cta}
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M4 12h15M13 6l6 6-6 6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       </div>
     </div>
   );
 }
 
-function MainScreensStep({
-  active,
-  setActive,
+function ThemeChoiceStep({
+  selected,
+  onSelect,
+  step,
 }: {
-  active: number;
-  setActive: (index: number) => void;
+  selected: ColorThemeKey;
+  onSelect: (theme: ColorThemeKey) => void;
+  step: OnboardingStep;
 }) {
-  const startX = useRef<number | null>(null);
-  const current = mainPreviews[active];
-
-  function changePreview(dir: -1 | 1) {
-    setActive((active + dir + mainPreviews.length) % mainPreviews.length);
-  }
-
-  function circularOffset(index: number) {
-    let offset = index - active;
-    if (offset > 1) offset -= mainPreviews.length;
-    if (offset < -1) offset += mainPreviews.length;
-    return offset;
-  }
-
-  function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    if (startX.current == null) return;
-    const diff = e.clientX - startX.current;
-    startX.current = null;
-    if (Math.abs(diff) < 42) return;
-    changePreview(diff < 0 ? 1 : -1);
-  }
-
+  const theme = colorThemes[selected] || colorThemes.standard;
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-2 shrink-0">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Start</p>
-        <h1 className="font-display text-h1 leading-tight">Drei Tabs, die du dauernd brauchst.</h1>
-        <p className="mt-1 text-small text-muted">Swipe kurz durch Heute, Events und Abstimmungen.</p>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[color:var(--accent)]">
+        {step.kicker}
+      </p>
+      <h1 className="mt-2 font-display text-[31px] font-extrabold leading-[1.02]">
+        {step.title}
+      </h1>
+      <p className="mt-2 max-w-[315px] text-[14.5px] leading-[1.45] text-muted">
+        {step.body}
+      </p>
 
-      <div
-        className="relative mx-auto min-h-[250px] w-full max-w-[360px] flex-1 touch-pan-y overflow-hidden"
-        onPointerDown={(e) => {
-          startX.current = e.clientX;
-        }}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          startX.current = null;
-        }}
-      >
-        {mainPreviews.map((preview, index) => {
-          const offset = circularOffset(index);
-          const isActive = offset === 0;
+      <HomeThemePreview theme={theme} />
+
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
+        {(Object.entries(colorThemes) as [ColorThemeKey, ColorTheme][]).map(([key, item]) => {
+          const active = key === selected;
           return (
             <button
-              key={preview.id}
+              key={key}
               type="button"
-              onClick={() => setActive(index)}
-              className="absolute left-1/2 top-1 w-[238px] origin-center rounded-[22px] border border-line bg-surface p-2.5 text-left shadow-2xl transition-all duration-300"
+              onClick={() => onSelect(key)}
+              aria-pressed={active}
+              className="flex min-h-[52px] items-center gap-2.5 rounded-[15px] border px-3 text-left transition active:scale-[0.98]"
               style={{
-                transform: `translateX(calc(-50% + ${offset * 116}px)) scale(${isActive ? 1 : 0.86})`,
-                opacity: isActive ? 1 : 0.45,
-                filter: isActive ? "none" : "blur(2px)",
-                zIndex: isActive ? 3 : 1,
+                borderColor: active ? item.ink : item.line,
+                background: active ? item.soft : item.card,
+                color: item.ink,
+                boxShadow: active ? `2px 2px 0 ${item.ink}` : "none",
               }}
-              aria-label={`${preview.label} ansehen`}
-              aria-pressed={isActive}
             >
-              <MockScreen preview={preview} active={isActive} />
+              <span className="flex h-7 w-7 shrink-0 overflow-hidden rounded-full border" style={{ borderColor: item.ink }}>
+                <span className="flex-1" style={{ background: item.accent }} />
+                <span className="flex-1" style={{ background: item.pop }} />
+                <span className="flex-1" style={{ background: item.dark }} />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[14px] font-extrabold">{item.name}</span>
+                {active && <span className="block text-[10px] font-bold uppercase tracking-[0.06em]">aktiv</span>}
+              </span>
             </button>
           );
         })}
       </div>
-
-      <div className="mt-2 shrink-0 rounded-lg border border-line bg-surface p-2.5">
-        <div className="mb-1.5 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => changePreview(-1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line"
-            aria-label="Vorherige Vorschau"
-          >
-            <IconChevronLeft size={16} />
-          </button>
-          <div className="text-center">
-            <p className="font-medium">{current.label}</p>
-            <p className="text-[12px] text-muted">{current.subtitle}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => changePreview(1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line"
-            aria-label="Nächste Vorschau"
-          >
-            <IconChevronRight size={16} />
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5">
-          {current.callouts.map((label) => (
-            <span key={label} className="inline-flex items-center justify-center gap-1 rounded-lg bg-[color:var(--surface-2)] px-2 py-1 text-[10px] text-muted">
-              <IconArrowDown size={12} />
-              {label}
-            </span>
-          ))}
-        </div>
-      </div>
-    </section>
+    </div>
   );
 }
 
-function MockScreen({ preview, active }: { preview: MainPreview; active: boolean }) {
+function HomeThemePreview({ theme }: { theme: ColorTheme }) {
   return (
-    <div className="overflow-hidden rounded-[18px] border border-line bg-[color:var(--bg)]">
-      <div className="flex items-center justify-between border-b border-line px-3 py-2">
-        <div>
-          <p className="font-display text-[22px] leading-none">{preview.title}</p>
-          <p className="mt-0.5 text-[10px] text-muted">{preview.subtitle}</p>
+    <div
+      className="mt-4 overflow-hidden rounded-[24px] border p-4 shadow-[0_14px_30px_rgba(17,51,61,0.12)]"
+      style={{ background: theme.paper, borderColor: theme.line, color: theme.ink }}
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 text-[8px] font-extrabold uppercase tracking-[0.14em]" style={{ color: theme.muted }}>
+          <span className="h-2 w-2 rotate-45" style={{ background: theme.accent }} />
+          Stufenportal - Abi '27
         </div>
-        <span
-          className="flex h-8 w-8 items-center justify-center rounded-full"
-          style={{
-            color: active ? "var(--signal-text)" : "var(--text-muted)",
-            background: active ? "color-mix(in srgb, var(--signal) 13%, transparent)" : "var(--surface-2)",
-          }}
+        <div
+          className="-rotate-2 rounded-[8px] border px-2 py-0.5 font-display text-[10px] font-extrabold"
+          style={{ background: theme.pop, borderColor: theme.ink, color: theme.ink, boxShadow: `1.5px 1.5px 0 ${theme.ink}` }}
         >
-          {preview.icon}
+          Sa, 27. Jun
+        </div>
+      </div>
+      <h2 className="font-display text-[29px] font-extrabold leading-[0.95]">
+        <span style={{ background: `linear-gradient(transparent 58%, ${theme.pop} 58%)` }}>Guten Morgen</span>
+      </h2>
+      <div className="relative mt-4 overflow-hidden rounded-[18px] px-3 py-3" style={{ background: theme.dark, color: theme.paper }}>
+        <div className="sp-half absolute -right-3 -top-3 h-[80px] w-[80px] opacity-20" />
+        <p className="relative mb-2 text-[8px] font-extrabold uppercase tracking-[0.16em]" style={{ color: `${theme.paper}99` }}>
+          Die Lage heute
+        </p>
+        <div className="relative grid grid-cols-3 gap-2 text-center">
+          <PreviewKpi value="3" label="Votes" color={theme.pop} />
+          <PreviewKpi value="2" label="Events" color={theme.paper} />
+          <PreviewKpi value="1" label="dringend" color={theme.accent} />
+        </div>
+      </div>
+      <div className="sp-theme-pinned mt-3 rounded-[18px] p-3" style={{ background: theme.card, border: `1px solid ${theme.line}` }}>
+        <span className="rounded-[7px] px-2 py-1 text-[9px] font-extrabold uppercase" style={{ background: theme.infoSoft, color: theme.info }}>
+          Angepinnt
         </span>
-      </div>
-      <div className="space-y-1.5 p-2.5">
-        {preview.callouts.map((label, index) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <span className="h-px flex-1 bg-line" />
-            <span className="rounded-full bg-surface px-2 py-1 text-[10px] font-medium text-muted">{label}</span>
-            <span className="h-px flex-1 bg-line" style={{ opacity: index === 1 ? 1 : 0.35 }} />
-          </div>
-        ))}
-        {preview.rows.map((row) => (
-          <div key={row.title} className="rounded-lg border border-line bg-surface p-2">
-            <div className="mb-1 flex items-start justify-between gap-2">
-              <p className="truncate text-[12px] font-medium">{row.title}</p>
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: row.tone === "warning" ? "var(--warning)" : row.tone === "success" ? "var(--success)" : "var(--signal)" }}
-              />
-            </div>
-            <p className="text-[10px] text-muted">{row.meta}</p>
-            <div className="mt-1.5 h-1 rounded-full bg-[color:var(--surface-2)]">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: row.tone === "warning" ? "70%" : row.tone === "success" ? "48%" : "82%",
-                  background: row.tone === "warning" ? "var(--warning)" : row.tone === "success" ? "var(--success)" : "var(--signal)",
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-3 border-t border-line text-[9px] text-muted">
-        {mainPreviews.map((item) => (
-          <div key={item.id} className="flex flex-col items-center gap-1 px-1 py-2" style={{ color: item.id === preview.id ? "var(--signal-text)" : undefined }}>
-            {item.icon}
-            <span className="truncate">{item.label}</span>
-          </div>
-        ))}
+        <p className="mt-2 font-display text-[17px] font-extrabold leading-tight">Abimotto-Finale steht!</p>
       </div>
     </div>
   );
 }
 
-function MoreStep() {
-  const rows = [
-    { label: "Leaderboard", sub: "freiwillig sichtbar", icon: <IconMedal size={18} /> },
-    { label: "Abizeitung", sub: "Zitate und Bilder", icon: <IconPencil size={18} /> },
-    { label: "Kasse", sub: "Stand und Buchungen", icon: <IconEuro size={18} /> },
-    { label: "News", sub: "alle Ankündigungen", icon: <IconMegaphone size={18} /> },
-  ];
-
+function PreviewKpi({ value, label, color }: { value: string; label: string; color: string }) {
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Mehr</p>
-      <h1 className="font-display text-h1 leading-tight">Alles, was nicht jeden Tag brennt.</h1>
-      <p className="mt-1 text-small text-muted">Der Mehr-Tab ist der Werkzeugkasten der Stufe.</p>
-
-      <div className="mt-4 rounded-[22px] border border-line bg-surface p-3 shadow-2xl">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <p className="font-display text-[26px] leading-none">Mehr</p>
-            <p className="mt-1 text-[11px] text-muted">sammeln, prüfen, verwalten</p>
-          </div>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
-            <IconSliders size={20} />
-          </span>
-        </div>
-        <div className="space-y-1.5">
-          {rows.map((row) => (
-            <div key={row.label} className="flex items-center gap-3 rounded-lg border border-line bg-[color:var(--bg)] px-3 py-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface-2)]">{row.icon}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-small font-medium">{row.label}</p>
-                <p className="text-[11px] text-muted">{row.sub}</p>
-              </div>
-              <IconChevronRight size={15} className="text-muted" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <InfoTile title="Freiwillig" body="Leaderboard ist opt-in." />
-        <InfoTile title="Sammeln" body="Abizeitung nimmt Zitate und Bilder." />
-        <InfoTile title="Finanzen" body="Kasse bleibt übersichtlich." />
-        <InfoTile title="Sprecher" body="Admin-Zeug bleibt im Code-Modus." />
-      </div>
-    </section>
-  );
-}
-
-function NameStep({
-  name,
-  setName,
-  err,
-}: {
-  name: string;
-  setName: (value: string) => void;
-  err: string;
-}) {
-  return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
-        <IconUser size={30} />
-      </div>
-      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Name</p>
-      <h1 className="font-display text-h1 leading-tight">Ein Name reicht.</h1>
-      <p className="mt-1 text-small text-muted">
-        Du brauchst keinen Account. Dein Name hilft bei Eintragungen, Kommentaren und später beim freiwilligen Leaderboard.
-      </p>
-
-      <div className="mt-4 rounded-lg border border-line bg-surface p-3">
-        <Field label="Dein Name" hint="Kannst du später in Mehr ändern.">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Vorname oder Spitzname" maxLength={40} />
-        </Field>
-        <div className="rounded-lg bg-[color:var(--surface-2)] px-3 py-2.5 text-[12px] leading-relaxed text-muted">
-          Bei anonymen Abstimmungen wird der Name nur gegen die Stufenliste geprüft. Deine Auswahl bleibt anonym.
-        </div>
-        {err && <p className="mt-2 text-[12px] text-danger">{err}</p>}
-      </div>
-
-      <div className="mt-3 space-y-1.5 text-small">
-        {["Kein Konto", "Name nur dort, wo er gebraucht wird", "Leaderboard bleibt freiwillig"].map((item) => (
-          <p key={item} className="flex items-center gap-2 text-muted">
-            <IconCheck size={15} style={{ color: "var(--success)" }} />
-            {item}
-          </p>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function InfoTile({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-lg border border-line bg-surface p-3">
-      <p className="font-medium">{title}</p>
-      <p className="mt-1 text-[12px] leading-snug text-muted">{body}</p>
+    <div>
+      <p className="font-display text-[28px] font-extrabold leading-none" style={{ color }}>{value}</p>
+      <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.04em] opacity-75">{label}</p>
     </div>
   );
 }

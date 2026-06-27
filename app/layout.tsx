@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppContext";
 import BottomNav from "@/components/BottomNav";
+import ContextTopBar from "@/components/ContextTopBar";
 import Onboarding from "@/components/Onboarding";
+import StatusBar from "@/components/StatusBar";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
-const fraunces = Fraunces({
+const hanken = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -32,20 +33,27 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="de" className={`${hanken.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <head>
         {/* Theme früh setzen, um Flash zu vermeiden. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sp_theme')||'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}`,
+            __html: `try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sp_theme')==='dark'?'dark':'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}`,
           }}
         />
       </head>
-      <body className={`${inter.variable} ${fraunces.variable}`}>
+      <body>
         <AppProvider>
-          <main className="mx-auto min-h-screen max-w-screen-sm px-4 pt-3">{children}</main>
-          <BottomNav />
-          <Onboarding />
+          <div className="sp-stage">
+            <div className="sp-device">
+              <div className="sp-grain" />
+              <StatusBar />
+              <ContextTopBar />
+              <main className="sp-content">{children}</main>
+              <BottomNav />
+              <Onboarding />
+            </div>
+          </div>
         </AppProvider>
       </body>
     </html>

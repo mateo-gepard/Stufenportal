@@ -5,10 +5,9 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { PollMethod, PollStatus } from "@/lib/types";
-import { Card, PollStatusPill, SkeletonList, BottomSheet, Button } from "@/components/ui";
+import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Textarea, Select, Toggle } from "@/components/form";
-import { IconCheck, IconClock, IconPlus, IconVote } from "@/components/icons";
-import { until } from "@/lib/format";
+import { IconPlus, IconUser } from "@/components/icons";
 
 interface PollListItem {
   id: string;
@@ -24,10 +23,13 @@ interface PollListItem {
 }
 
 const methodLabel: Record<PollMethod, string> = {
-  single: "Eine Wahl",
-  approval: "Mehrfachauswahl",
-  ranked: "Rangfolge",
+  single: "Single",
+  approval: "Mehrfach",
+  ranked: "Ranking",
 };
+
+const ELIGIBLE_VOTERS = 99;
+const TURNOUT_DOTS = 30;
 
 export default function PollsPage() {
   const { admin } = useApp();
@@ -43,8 +45,11 @@ export default function PollsPage() {
 
   return (
     <div className="sp-in pb-6">
-      <header className="mb-3 flex items-center justify-between">
-        <h1 className="font-display text-display">Abstimmungen</h1>
+      <header className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <p className="sp-section-kicker">Stufenportal</p>
+          <h1 className="sp-page-title">Abstimmungen</h1>
+        </div>
         {admin && (
           <Button onClick={() => setOpen(true)}>
             <IconPlus size={17} />
@@ -60,38 +65,10 @@ export default function PollsPage() {
         </Card>
       )}
 
-      {polls && polls.length > 0 && (
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          <PollStat label="Offen" value={polls.filter((p) => p.status === "open").length} icon={<IconVote size={15} />} />
-          <PollStat label="Erledigt" value={polls.filter((p) => p.voted).length} icon={<IconCheck size={15} />} />
-          <PollStat label="Mit Frist" value={polls.filter((p) => p.status === "open" && p.closes_at).length} icon={<IconClock size={15} />} />
-        </div>
-      )}
-
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-[14px]">
         {polls?.map((p) => (
-          <Link key={p.id} href={`/polls/${p.id}`}>
-            <Card className="p-4">
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <h2 className="font-display text-h2 leading-tight">{p.question}</h2>
-                <PollStatusPill status={p.status} />
-              </div>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                <MetaChip>{methodLabel[p.method]}{p.method === "ranked" && p.rank_limit ? ` Top ${p.rank_limit}` : ""}</MetaChip>
-                {p.ranked_veto_enabled && <MetaChip>Veto</MetaChip>}
-                {p.anonymous && <MetaChip>Anonym</MetaChip>}
-              </div>
-              <div className="flex items-center justify-between gap-3 text-[12px] text-muted">
-                <span className="tabular">{p.total_ballots} {p.total_ballots === 1 ? "Stimme" : "Stimmen"}</span>
-                {p.status === "open" && p.closes_at && <span className="shrink-0">{until(p.closes_at)}</span>}
-              </div>
-              {p.voted && p.status === "open" && (
-                <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-success">
-                  <IconCheck size={13} />
-                  Du hast abgestimmt
-                </p>
-              )}
-            </Card>
+          <Link key={p.id} href={`/polls/${p.id}`} className="block">
+            <VoteCard poll={p} />
           </Link>
         ))}
       </div>
@@ -110,24 +87,113 @@ export default function PollsPage() {
   );
 }
 
-function PollStat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+function VoteCard({ poll }: { poll: PollListItem }) {
+  const turnout = turnoutFor(poll.total_ballots);
+  const isClosed = poll.status !== "open";
   return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
-      <div className="mb-1 flex items-center justify-between text-muted">
-        {icon}
-        <span className="tabular text-[18px] font-semibold text-text">{value}</span>
+    <article
+      className={`rounded-[20px] border border-line bg-surface p-[22px] shadow-[0_1px_0_rgba(17,51,61,0.03)] transition active:scale-[0.995] ${
+        isClosed ? "opacity-60" : ""
+      }`}
+    >
+      <div className="mb-[15px] flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
+          <MetaChip tone="blue">
+            {methodLabel[poll.method]}
+            {poll.method === "ranked" && poll.rank_limit ? ` ${poll.rank_limit}` : ""}
+          </MetaChip>
+          {poll.ranked_veto_enabled && <MetaChip tone="plain">1 Veto</MetaChip>}
+          {poll.anonymous && (
+            <MetaChip tone="plain">
+              <IconUser size={12} strokeWidth={2.2} />
+              Anonym
+            </MetaChip>
+          )}
+          {poll.voted && poll.status === "open" && <MetaChip tone="success">Erledigt</MetaChip>}
+        </div>
+        <DeadlineBadge poll={poll} />
       </div>
-      <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] text-muted">{label}</p>
+
+      <h2 className="mb-[14px] font-display text-[24px] font-black leading-[1.02] text-text">{poll.question}</h2>
+      <TurnoutDots pct={turnout.pct} muted={isClosed} />
+      <p className="mt-3 tabular text-[13px] font-extrabold text-muted">
+        {poll.total_ballots} von {turnout.total} Stimmen · {turnout.pct}%
+      </p>
+    </article>
+  );
+}
+
+function MetaChip({
+  children,
+  tone = "plain",
+}: {
+  children: React.ReactNode;
+  tone?: "blue" | "plain" | "success";
+}) {
+  const styles = {
+    blue: { background: "var(--info-soft)", color: "var(--info)" },
+    plain: { background: "var(--surface-2)", color: "var(--text-muted)" },
+    success: { background: "var(--ok-soft)", color: "var(--success)" },
+  }[tone];
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.04em]"
+      style={styles}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DeadlineBadge({ poll }: { poll: PollListItem }) {
+  if (poll.status !== "open") {
+    return (
+      <span className="shrink-0 rounded-[9px] border border-line bg-surface px-2.5 py-1 text-[12px] font-extrabold text-muted">
+        beendet
+      </span>
+    );
+  }
+  if (!poll.closes_at) return null;
+  return (
+    <span className="shrink-0 rounded-[9px] border border-[color:var(--pop)] bg-[color:var(--warn-soft)] px-2.5 py-1 text-[12px] font-extrabold text-text">
+      {deadlineLabel(poll.closes_at)}
+    </span>
+  );
+}
+
+function TurnoutDots({ pct, muted }: { pct: number; muted: boolean }) {
+  const active = pct <= 0 ? 0 : Math.max(1, Math.round((pct / 100) * TURNOUT_DOTS));
+  return (
+    <div className="flex max-w-full flex-wrap gap-[4px]" aria-hidden>
+      {Array.from({ length: TURNOUT_DOTS }).map((_, i) => (
+        <span
+          key={i}
+          className="h-[7px] w-[7px] rounded-[2px]"
+          style={{
+            background:
+              i < active
+                ? muted
+                  ? "color-mix(in srgb, var(--accent) 58%, var(--line))"
+                  : "var(--accent)"
+                : "var(--line)",
+          }}
+        />
+      ))}
     </div>
   );
 }
 
-function MetaChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full bg-[color:var(--surface-2)] px-2.5 py-1 text-[11px] font-medium text-muted">
-      {children}
-    </span>
-  );
+function turnoutFor(ballots: number) {
+  const total = Math.max(ELIGIBLE_VOTERS, ballots);
+  const pct = total > 0 ? Math.min(100, Math.round((ballots / total) * 100)) : 0;
+  return { total, pct };
+}
+
+function deadlineLabel(iso: string): string {
+  const d = new Date(iso);
+  const weekday = new Intl.DateTimeFormat("de-DE", { weekday: "short" }).format(d).replace(".", "");
+  const time = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(d);
+  return `bis ${weekday} ${time}`;
 }
 
 function CreatePollSheet({

@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 // Route serverseitig prüft (RLS-Äquivalent: Rechte nah an den Daten, nicht im UI).
 
 const SECRET = process.env.SP_SECRET || "dev-insecure-secret-change-me";
-const ADMIN_CODE = process.env.ADMIN_CODE || "stufe2026";
+const ADMIN_CODE = process.env.ADMIN_CODE || "stufe2027";
 export const ADMIN_COOKIE = "sp_admin";
 
 function sign(value: string): string {

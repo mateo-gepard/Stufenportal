@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { Card, SkeletonList, Button } from "@/components/ui";
-import { IconChevronLeft, IconChevronRight, IconLock } from "@/components/icons";
+import { IconChevronRight, IconLock } from "@/components/icons";
 import { dateTime } from "@/lib/format";
 
 interface TrashItem {
@@ -72,13 +72,12 @@ export default function AdminPage() {
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        <IconChevronLeft size={15} />
-        Mehr
-      </Link>
-      <h1 className="mb-4 font-display text-display">Verwaltung</h1>
+      <div className="mb-4">
+        <p className="sp-section-kicker">Sprecher-Modus</p>
+        <h1 className="sp-page-title">Verwaltung</h1>
+      </div>
 
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Schnellzugriff</h2>
+      <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Schnellzugriff</h2>
       <div className="mb-6 grid grid-cols-2 gap-2.5">
         <QuickLink href="/events" label="Events" />
         <QuickLink href="/news" label="News" />
@@ -87,7 +86,7 @@ export default function AdminPage() {
         <QuickLink href="/kasse" label="Kasse" />
       </div>
 
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Abstimmungsprobleme</h2>
+      <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Abstimmungsprobleme</h2>
       {!issues && <SkeletonList rows={1} />}
       {issues && issues.length === 0 && (
         <Card className="mb-6 text-center text-muted">
@@ -112,7 +111,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Papierkorb</h2>
+      <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Papierkorb</h2>
       {!items && <SkeletonList rows={2} />}
       {items && items.length === 0 && (
         <Card className="text-center text-muted"><p className="py-6">Papierkorb ist leer.</p></Card>
@@ -144,7 +143,7 @@ export default function AdminPage() {
 function QuickLink({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href}>
-      <Card className="text-center"><p className="py-1 font-medium">{label}</p></Card>
+      <Card className="sp-half min-h-[70px] overflow-hidden text-center"><p className="relative z-[1] py-1 font-extrabold">{label}</p></Card>
     </Link>
   );
 }

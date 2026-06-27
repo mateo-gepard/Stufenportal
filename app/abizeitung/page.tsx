@@ -1,14 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { api, getDeviceId } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { AbizeitungEntry } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
 import { Field, Input, Textarea } from "@/components/form";
-import { IconChevronLeft, IconPlus, IconTrash } from "@/components/icons";
-import { dateTime } from "@/lib/format";
+import { IconPlus, IconTrash } from "@/components/icons";
 
 export default function AbizeitungPage() {
   const { admin } = useApp();
@@ -31,20 +29,8 @@ export default function AbizeitungPage() {
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        <IconChevronLeft size={15} />
-        Mehr
-      </Link>
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="font-display text-display">Abizeitung</h1>
-        <Button onClick={() => setCreate(true)}>
-          <IconPlus size={17} />
-          Beitrag
-        </Button>
-      </header>
-
-      <p className="mb-4 text-small text-muted">
-        Sammle Zitate, Schnappschüsse und kleine Erinnerungen für die Abizeitung.
+      <p className="mb-7 text-[17px] font-medium leading-[1.55] text-muted">
+        Zitate, Schnappschüsse und Sprüche für die Abizeitung - sammelt alles an einem Ort.
       </p>
 
       {!entries && <SkeletonList rows={3} />}
@@ -54,36 +40,66 @@ export default function AbizeitungPage() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="columns-2 gap-4 [column-fill:_balance]">
         {entries?.map((entry) => (
-          <Card key={entry.id}>
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium">{entry.author_name}</p>
-                <p className="text-[11px] text-muted">{dateTime(entry.created_at)}</p>
+          <article
+            key={entry.id}
+            className={`relative mb-4 break-inside-avoid border border-line bg-surface shadow-[0_8px_18px_rgba(17,51,61,0.08)] ${
+              entry.image_url
+                ? "rotate-[1.2deg] rounded-[5px] p-2 pb-3"
+                : "rotate-[-1.1deg] rounded-[13px] px-4 pb-4 pt-3"
+            }`}
+          >
+            {(entry.mine || admin) && (
+              <div className="absolute right-2 top-2 z-10">
+                <AdminDots onClick={() => setSheetFor(entry)} />
               </div>
-              {(entry.mine || admin) && <AdminDots onClick={() => setSheetFor(entry)} />}
-            </div>
+            )}
 
             {entry.image_url && (
-              <img
-                src={entry.image_url}
-                alt={entry.caption || entry.image_name || "Abizeitung-Bild"}
-                className="mb-3 aspect-[4/3] w-full rounded-lg border border-line object-cover"
-              />
+              <div className="relative mb-3">
+                <span className="absolute left-1/2 top-[-16px] z-10 h-6 w-[58px] -translate-x-1/2 rotate-[4deg] rounded-sm bg-[color:var(--pop)]/70 shadow-sm" />
+                <img
+                  src={entry.image_url}
+                  alt={entry.caption || entry.image_name || "Abizeitung-Bild"}
+                  className="aspect-[4/3] w-full rounded-[3px] object-cover"
+                />
+              </div>
             )}
 
             {entry.quote && (
-              <blockquote className="rounded-lg bg-[color:var(--surface-2)] px-3.5 py-3">
-                <p className="whitespace-pre-wrap font-display text-h2 leading-snug">„{entry.quote}“</p>
-                {entry.quoted_name && <p className="mt-2 text-small text-muted">- {entry.quoted_name}</p>}
+              <blockquote className="relative">
+                <span className="mb-3 block font-display text-[34px] font-black leading-none text-[color:var(--accent)]">"</span>
+                <p
+                  className="whitespace-pre-wrap font-display text-[19px] font-black leading-[1.25]"
+                  style={{
+                    textDecorationLine: "underline",
+                    textDecorationColor: "color-mix(in srgb, var(--pop) 45%, transparent)",
+                    textDecorationThickness: "0.48em",
+                    textUnderlineOffset: "-0.24em",
+                    textDecorationSkipInk: "none",
+                  }}
+                >
+                  {entry.quote}
+                </p>
+                <p className="mt-4 text-[13px] font-semibold text-muted">- {entry.author_name || "anonym"}</p>
               </blockquote>
             )}
 
-            {entry.caption && <p className="mt-2 whitespace-pre-wrap text-small text-muted">{entry.caption}</p>}
-          </Card>
+            {entry.caption && <p className="mt-2 whitespace-pre-wrap text-[13px] font-extrabold leading-tight">{entry.caption}</p>}
+          </article>
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setCreate(true)}
+        className="mt-3 flex min-h-[62px] w-full items-center justify-center gap-2 rounded-[15px] border-2 border-dashed px-4 font-display text-[19px] font-black transition active:scale-[0.98]"
+        style={{ borderColor: "var(--ink)", color: "var(--ink)" }}
+      >
+        <IconPlus size={20} strokeWidth={2.4} />
+        Beitrag einreichen
+      </button>
 
       <SubmitSheet
         open={create}

@@ -7,7 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { LeaderboardRow, MemberRow } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Select } from "@/components/form";
-import { IconChevronLeft, IconMedal, IconPlus, IconTrophy } from "@/components/icons";
+import { IconPlus } from "@/components/icons";
 
 export default function LeaderboardPage() {
   const { admin } = useApp();
@@ -23,20 +23,17 @@ export default function LeaderboardPage() {
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        <IconChevronLeft size={15} />
-        Mehr
-      </Link>
-      <header className="mb-1 flex items-center justify-between">
-        <h1 className="font-display text-display">Leaderboard</h1>
+      <div className="mb-7 flex items-start justify-between gap-4">
+        <p className="max-w-[285px] text-[17px] font-medium leading-[1.5] text-muted">
+          Freiwillig & opt-in. Sprecher vergeben Punkte mit Grund - niemand erscheint automatisch.
+        </p>
         {admin && (
-          <Button onClick={() => setAward(true)}>
+          <Button onClick={() => setAward(true)} variant="surface">
             <IconPlus size={17} />
             Punkte
           </Button>
         )}
-      </header>
-      <p className="mb-4 text-small text-muted">Punkte fürs Mitmachen. Wer hier steht, hat sich freiwillig sichtbar gemacht.</p>
+      </div>
 
       {!board && <SkeletonList rows={3} />}
       {board && board.length === 0 && (
@@ -52,35 +49,12 @@ export default function LeaderboardPage() {
       )}
 
       {board && board.length > 0 && (
-        <div className="mb-4 grid grid-cols-3 items-end gap-2">
-          {board.slice(0, 3).map((row, index) => (
-            <PodiumCard key={row.rank + row.name} row={row} place={index + 1} />
-          ))}
-        </div>
+        <LeaderboardPodium board={board} />
       )}
 
-      <div className="flex flex-col gap-2.5">
-        {board?.map((row) => (
-          <Card
-            key={row.rank + row.name}
-            className="flex items-center gap-3.5 p-4"
-            style={row.mine ? { borderColor: "var(--signal)" } : undefined}
-          >
-            <span
-              className="tabular flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold"
-              style={{
-                background: row.rank <= 3 ? "color-mix(in srgb, var(--signal) 14%, transparent)" : "var(--surface-2)",
-                color: row.rank <= 3 ? "var(--signal-text)" : "var(--text-muted)",
-              }}
-            >
-              {row.rank <= 3 ? <IconMedal size={18} /> : row.rank}
-            </span>
-            <span className="flex-1 truncate font-medium">
-              {row.name}
-              {row.mine && <span className="ml-1.5 text-[12px] text-muted">(du)</span>}
-            </span>
-            <span className="tabular font-display text-h2">{row.points}</span>
-          </Card>
+      <div className="divide-y divide-line">
+        {board?.slice(3).map((row) => (
+          <LeaderboardListRow key={row.rank + row.name} row={row} />
         ))}
       </div>
 
@@ -89,26 +63,84 @@ export default function LeaderboardPage() {
   );
 }
 
-function PodiumCard({ row, place }: { row: LeaderboardRow; place: number }) {
-  const heights: Record<number, string> = { 1: "min-h-[132px]", 2: "min-h-[112px]", 3: "min-h-[100px]" };
+function podiumSlots(board: LeaderboardRow[]) {
+  const top = board.slice(0, 3);
+  return [top[1] ?? null, top[0] ?? null, top[2] ?? null];
+}
+
+function LeaderboardPodium({ board }: { board: LeaderboardRow[] }) {
   return (
-    <Card
-      className={`${heights[place]} flex flex-col items-center justify-end p-3 text-center`}
-      style={row.mine ? { borderColor: "var(--signal)" } : undefined}
-    >
-      <span
-        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full"
+    <section className="mb-[28px]">
+      <div className="grid min-h-[244px] grid-cols-3 items-end gap-2">
+        {podiumSlots(board).map((row, index) => (
+          <PodiumSpot key={row ? row.rank + row.name : `empty-${index}`} row={row} visualSlot={index} />
+        ))}
+      </div>
+      <div className="h-[3px] rounded-full bg-[color:var(--ink)]" />
+    </section>
+  );
+}
+
+function PodiumSpot({ row, visualSlot }: { row: LeaderboardRow | null; visualSlot: number }) {
+  const heights = ["h-[76px]", "h-[106px]", "h-[64px]"];
+  if (!row) return <div aria-hidden />;
+  const isFirst = row.rank === 1;
+  return (
+    <div className="flex min-w-0 flex-col items-center text-center">
+      <div
+        className="mb-2 flex h-[56px] w-[56px] items-center justify-center rounded-full border-[3px] text-[18px] font-display font-black"
         style={{
-          color: place === 1 ? "white" : "var(--signal-text)",
-          background: place === 1 ? "var(--signal)" : "color-mix(in srgb, var(--signal) 14%, transparent)",
+          borderColor: "var(--ink)",
+          background: isFirst ? "var(--pop)" : "var(--paper)",
+          color: "var(--ink)",
+          outline: row.mine ? "2px solid var(--accent)" : undefined,
+          outlineOffset: 3,
         }}
       >
-        {place === 1 ? <IconTrophy size={18} /> : <IconMedal size={18} />}
-      </span>
-      <p className="line-clamp-2 text-small font-medium">{row.name}</p>
-      <p className="tabular font-display text-h2">{row.points}</p>
-    </Card>
+        {initials(row.name)}
+      </div>
+      <p className="line-clamp-1 max-w-full text-[13px] font-extrabold leading-tight">{row.name}</p>
+      <p className="tabular mb-2 font-display text-[21px] font-black leading-none text-[color:var(--accent)]">{row.points}</p>
+      <div
+        className={`${heights[visualSlot] || "h-[64px]"} flex w-full items-start justify-center rounded-t-[9px] border-[3px] px-2 pt-2 font-display text-[23px] font-black`}
+        style={{
+          background: isFirst ? "var(--accent)" : "var(--paper)",
+          borderColor: "var(--ink)",
+          color: isFirst ? "white" : "var(--muted)",
+        }}
+      >
+        {row.rank}
+      </div>
+    </div>
   );
+}
+
+function LeaderboardListRow({ row }: { row: LeaderboardRow }) {
+  return (
+    <div
+      className="flex min-h-[66px] items-center gap-3 py-3"
+      style={row.mine ? { background: "color-mix(in srgb, var(--accent) 6%, transparent)" } : undefined}
+    >
+      <span className="tabular w-8 shrink-0 text-center text-[16px] font-extrabold text-muted">{row.rank}</span>
+      <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-line bg-surface text-[14px] font-display font-black text-muted">
+        {initials(row.name)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-[19px] font-black leading-tight">{row.name}</span>
+        {row.mine && <span className="block text-[12px] font-semibold text-muted">Du</span>}
+      </span>
+      <span className="tabular font-display text-[22px] font-black">{row.points}</span>
+    </div>
+  );
+}
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 function AwardSheet({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {

@@ -30,8 +30,8 @@ const config: Config = {
         xl: "20px",
       },
       fontSize: {
-        display: ["30px", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
-        h1: ["22px", { lineHeight: "1.2", letterSpacing: "-0.01em" }],
+        display: ["30px", { lineHeight: "1.05", letterSpacing: "0", fontWeight: "850" }],
+        h1: ["22px", { lineHeight: "1.2", letterSpacing: "0", fontWeight: "850" }],
         h2: ["18px", { lineHeight: "1.25" }],
         body: ["15px", { lineHeight: "1.45" }],
         small: ["13px", { lineHeight: "1.4" }],

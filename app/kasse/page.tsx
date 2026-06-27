@@ -7,7 +7,7 @@ import { useApp } from "@/components/AppContext";
 import type { EventGoal, LedgerEntry } from "@/lib/types";
 import { Card, Skeleton, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
 import { Field, Input, Select } from "@/components/form";
-import { IconArrowDown, IconArrowUp, IconChart, IconChevronLeft, IconPlus, IconTarget, IconTrash } from "@/components/icons";
+import { IconArrowDown, IconArrowUp, IconChart, IconPlus, IconTarget, IconTrash } from "@/components/icons";
 import { money, date, relativeDay } from "@/lib/format";
 
 interface LedgerData {
@@ -38,12 +38,11 @@ export default function KassePage() {
 
   return (
     <div className="sp-in pb-6">
-      <Link href="/more" className="mb-2 inline-flex items-center gap-1 text-small text-muted">
-        <IconChevronLeft size={15} />
-        Mehr
-      </Link>
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="font-display text-display">Kasse</h1>
+      <header className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <p className="sp-section-kicker">Finanzen</p>
+          <h1 className="sp-page-title">Kasse</h1>
+        </div>
         {admin && (
           <Button onClick={() => setCreate(true)}>
             <IconPlus size={17} />
@@ -56,39 +55,40 @@ export default function KassePage() {
         <Skeleton className="h-28 w-full" />
       ) : (
         <div className="mb-5 space-y-3">
-          <Card className="overflow-hidden p-0">
-            <div className="p-5 text-center">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenstand</p>
-              <p className="tabular font-display text-[42px] leading-none" style={{ color: data.balance >= 0 ? "var(--text)" : "var(--danger)" }}>
+          <div className="overflow-hidden rounded-[26px] bg-[color:var(--dark)] p-5 text-white shadow-[6px_6px_0_color-mix(in_srgb,var(--ink)_16%,transparent)]">
+            <div className="mb-5">
+              <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/55">Kassenstand</p>
+              <p className="tabular font-display text-[46px] font-black leading-none" style={{ color: data.balance >= 0 ? "white" : "var(--pop)" }}>
                 {money(data.balance)}
               </p>
             </div>
-            <div className="grid grid-cols-2 border-t border-line">
+            <FinanceSplit income={data.income} expense={data.expense} />
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <MoneyStat icon={<IconArrowDown size={15} />} label="Einnahmen" value={data.income} tone="success" />
               <MoneyStat icon={<IconArrowUp size={15} />} label="Ausgaben" value={data.expense} tone="danger" />
             </div>
-          </Card>
+          </div>
 
           {data.event_goals.length > 0 && (
-            <Card className="p-4">
+            <Card className="border-2 border-dashed border-[color:var(--pop)] bg-[color:var(--pop-soft)] p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface-2)] text-[color:var(--signal-text)]">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-[13px] bg-white text-[color:var(--warn)]">
                     <IconTarget size={18} />
                   </span>
                   <div>
-                    <p className="font-medium">Geplante Event-Ziele</p>
+                    <p className="font-extrabold">Geplante Event-Ziele</p>
                     <p className="text-[12px] text-muted">Nicht im Kassenstand eingerechnet.</p>
                   </div>
                 </div>
-                <span className="tabular font-display text-h2">{money(data.event_goal_total)}</span>
+                <span className="tabular font-display text-[24px] font-black">{money(data.event_goal_total)}</span>
               </div>
               <div className="space-y-2">
                 {data.event_goals.map((goal) => (
-                  <Link key={goal.id} href={`/events/${goal.id}`} className="flex items-center gap-3 rounded-lg bg-[color:var(--surface-2)] px-3 py-2.5">
+                  <Link key={goal.id} href={`/events/${goal.id}`} className="flex items-center gap-3 rounded-[14px] bg-white/70 px-3 py-2.5">
                     <IconChart size={16} className="shrink-0 text-muted" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-small font-medium">{goal.title}</p>
+                      <p className="truncate text-small font-extrabold">{goal.title}</p>
                       <p className="truncate text-[11px] text-muted">
                         {goal.start_at ? relativeDay(goal.start_at) : "Ohne Datum"}
                         {goal.money_goal_note ? ` · ${goal.money_goal_note}` : ""}
@@ -103,12 +103,12 @@ export default function KassePage() {
         </div>
       )}
 
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Kassenbuch</h2>
+      <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Kassenbuch</h2>
       <div className="flex flex-col gap-2.5">
         {data?.entries.map((e) => (
-          <div key={e.id} className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-3">
+          <div key={e.id} className="flex items-center gap-3 rounded-[16px] border border-line bg-surface px-3.5 py-3">
             <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] text-[15px]"
               style={{
                 color: e.kind === "income" ? "var(--success)" : "var(--danger)",
                 background: e.kind === "income" ? "color-mix(in srgb, var(--success) 12%, transparent)" : "color-mix(in srgb, var(--danger) 12%, transparent)",
@@ -117,7 +117,7 @@ export default function KassePage() {
               {e.kind === "income" ? <IconArrowDown size={18} /> : <IconArrowUp size={18} />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{e.description}</p>
+              <p className="truncate font-extrabold">{e.description}</p>
               <p className="text-[12px] text-muted">
                 {date(e.occurred_at)} · {e.category}
                 {e.paid_by ? ` · ${e.paid_by}` : ""}
@@ -168,14 +168,32 @@ function MoneyStat({
   tone: "success" | "danger";
 }) {
   return (
-    <div className="px-4 py-3 text-center">
-      <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-muted">
+    <div className="rounded-[14px] border border-white/10 bg-white/10 px-3 py-3">
+      <p className="mb-1 inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white/55">
         {icon}
         {label}
       </p>
-      <p className="tabular font-medium" style={{ color: `var(--${tone})` }}>
+      <p className="tabular font-extrabold" style={{ color: tone === "success" ? "var(--ok-soft)" : "var(--accent-soft)" }}>
         {money(value)}
       </p>
+    </div>
+  );
+}
+
+function FinanceSplit({ income, expense }: { income: number; expense: number }) {
+  const total = income + expense;
+  const incomePct = total > 0 ? Math.max(4, Math.round((income / total) * 100)) : 50;
+  const expensePct = total > 0 ? Math.max(4, 100 - incomePct) : 50;
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-[0.08em] text-white/55">
+        <span>Rein</span>
+        <span>Raus</span>
+      </div>
+      <div className="flex h-3 overflow-hidden rounded-full bg-white/10">
+        <div style={{ width: `${incomePct}%`, background: "var(--ok)" }} />
+        <div style={{ width: `${expensePct}%`, background: "var(--accent)" }} />
+      </div>
     </div>
   );
 }

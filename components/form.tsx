@@ -3,7 +3,7 @@
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <label className="mb-3 block">
-      <span className="mb-1.5 block text-small font-medium text-muted">{label}</span>
+      <span className="mb-1.5 block text-small font-bold text-muted">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-[12px] text-muted">{hint}</span>}
     </label>
@@ -11,7 +11,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-[color:var(--bg)] px-3.5 py-3 text-[15px] text-text outline-none focus:border-[color:var(--signal)] placeholder:text-muted";
+  "w-full rounded-[14px] border border-line bg-surface px-3.5 py-3 text-[15px] text-text outline-none focus:border-[color:var(--signal)] placeholder:text-muted";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputClass} ${props.className || ""}`} />;
@@ -44,7 +44,7 @@ export function Toggle({
       onClick={() => onChange(!checked)}
       role="switch"
       aria-checked={checked}
-      className="flex min-h-[48px] w-full items-center justify-between rounded-xl border border-line bg-[color:var(--bg)] px-3.5"
+      className="flex min-h-[48px] w-full items-center justify-between rounded-[14px] border border-line bg-surface px-3.5"
     >
       <span className="text-[15px]">{label}</span>
       {/* Knopf als Flex-Element (kein absolute) -> deterministischer Startpunkt links. */}
