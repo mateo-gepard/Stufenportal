@@ -92,17 +92,24 @@ export default function Onboarding({ loginMode = false }: { loginMode?: boolean 
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (loginMode) {
       setOpen(true);
       setStep(0);
       return;
     }
+    if (!user) {
+      setOpen(false);
+      return;
+    }
     try {
-      if (localStorage.getItem(STORAGE_KEY) !== "done") setOpen(true);
+      setOpen(localStorage.getItem(STORAGE_KEY) !== "done");
     } catch {
       setOpen(true);
     }
-  }, [loginMode]);
+  }, [loginMode, user]);
 
   useEffect(() => {
     if (loginMode) return;
@@ -334,7 +341,7 @@ function LoginStep({
             value={name}
             onChange={(e) => onName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-            placeholder="z. B. Mio Boege"
+            placeholder="z. B. Max Mustermann"
             autoComplete="off"
             className="w-full bg-transparent font-display text-[23px] font-black outline-none placeholder:text-muted"
           />
