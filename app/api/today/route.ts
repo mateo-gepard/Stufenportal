@@ -27,10 +27,16 @@ export async function GET(req: Request) {
 
   // Auto-Close offene Polls mit abgelaufener Frist.
   const openPollsRaw = await db.prepare("SELECT * FROM polls WHERE deleted_at IS NULL AND status = 'open'").all<any>();
-  for (const p of openPollsRaw) await autoClose(p);
-  const livePolls = await db
-    .prepare("SELECT * FROM polls WHERE deleted_at IS NULL AND status = 'open' ORDER BY (closes_at IS NULL), closes_at ASC")
-    .all<any>();
+  const livePolls = (await Promise.all(openPollsRaw.map((p) => autoClose(p))))
+    .filter((p) => p.status === "open")
+    .sort((a, b) => {
+      if (!a.closes_at && !b.closes_at) {
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+      if (!a.closes_at) return 1;
+      if (!b.closes_at) return -1;
+      return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
+    });
 
   // 2. Dringendes: Dringende News plus Polls/Events mit Frist in den nächsten 3 Tagen.
   const soon = now + 3 * 864e5;
@@ -95,5 +101,5 @@ export async function GET(req: Request) {
   );
 
   const digest: TodayDigest = { featuredNews, urgent, upcoming, openPolls };
-  return NextResponse.json(digest);
+  return NextResponse.json(digest, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }

@@ -15,6 +15,7 @@ interface PollRow {
   poll_secret: string;
   closes_at: string | null;
   status: "open" | "closed" | "invalid";
+  created_at?: string;
 }
 
 export function rankedMaxPriorities(optionCount: number, vetoEnabled: boolean): number {

@@ -12,6 +12,7 @@ type OnboardingStep = {
   kicker: string;
   title: string;
   body: string;
+  points?: string[];
   iconBg?: string;
   iconFg?: string;
   iconPath?: string;
@@ -21,8 +22,9 @@ type OnboardingStep = {
 const steps: OnboardingStep[] = [
   {
     kicker: "Schritt 1",
-    title: "Alles auf einen Blick",
-    body: "Heute bündelt Fristen, kommende Events und offene Abstimmungen. Kein Suchen mehr in zig Chats.",
+    title: "Heute sagt dir, was jetzt zählt",
+    body: "Oben siehst du sofort offene Votes, kommende Events und Dringendes. Darunter führen dich Karten direkt zur Aufgabe.",
+    points: ["Offene Votes antippen und abstimmen", "Dringend bedeutet News oder nahe Frist", "Events zeigen Datum und Fortschritt"],
     iconBg: "var(--pop)",
     iconFg: "var(--ink)",
     iconPath: "M4 17h16M12 4v3M5.5 8.5 7 10M18.5 8.5 17 10M7 17a5 5 0 0 1 10 0",
@@ -32,13 +34,14 @@ const steps: OnboardingStep[] = [
     kicker: "Schritt 2",
     kind: "theme",
     title: "Dein Farbthema",
-    body: "Such dir den Look aus, mit dem sich dein Stufenportal am meisten nach eurer Stufe anfühlt.",
+    body: "Wähle den Look aus, der sich für eure Stufe richtig anfühlt. Die Vorschau zeigt sofort, wie Heute danach wirkt.",
     cta: "Weiter",
   },
   {
     kicker: "Schritt 3",
-    title: "Events & Eintragen",
-    body: "Meilensteine, Eintragungslisten mit Warteliste und Kommentare: die ganze Orga pro Event.",
+    title: "Events ohne Listenchaos",
+    body: "In Events findest du Termin, Fortschritt und alles zum Eintragen an einem Ort. Wenn ein Slot voll ist, greift die Warteliste.",
+    points: ["Meilensteine zeigen, was noch offen ist", "Slots verhindern doppelte Tabellen", "Kommentare bleiben beim Event"],
     iconBg: "var(--info-soft)",
     iconFg: "var(--info)",
     iconPath: "M3.5 5h17v15h-17zM3.5 9.5h17M8 3v3.5M16 3v3.5",
@@ -46,8 +49,9 @@ const steps: OnboardingStep[] = [
   },
   {
     kicker: "Schritt 4",
-    title: "Abstimmen - fair",
-    body: "Single, Mehrfach oder Ranking. Anonyme Votes gleichen den Namen mit der Stufenliste ab, ohne ihn zu zeigen.",
+    title: "Abstimmen, ohne Chaos",
+    body: "Votes können Single, Mehrfach oder Ranking sein. Bei anonymen Votes gibst du deinen Namen nur zur Prüfung ein.",
+    points: ["Deine Auswahl bleibt anonym", "Ein Name kann pro Vote nur einmal stimmen", "Bei Namenskonflikt kannst du melden"],
     iconBg: "var(--accent-soft)",
     iconFg: "var(--accent)",
     iconPath: "M5 21h14M7 21V9m5 12V4m5 17v-8",
@@ -55,8 +59,9 @@ const steps: OnboardingStep[] = [
   },
   {
     kicker: "Fast fertig",
-    title: "Kein Account nötig",
-    body: "Nur eine zufällige Geräte-ID. Deinen Namen fragen wir nur, wenn eine Funktion ihn braucht. Los geht's.",
+    title: "Mehr ist deine Werkzeugkiste",
+    body: "Im Mehr-Tab findest du Kasse, Abizeitung, Leaderboard, Farbthema und Sprecher-Modus. Deinen Namen brauchst du nur für konkrete Funktionen.",
+    points: ["Kein Account, keine Mail, kein Passwort", "Leaderboard ist freiwillig", "Onboarding kannst du dort erneut starten"],
     iconBg: "var(--ok-soft)",
     iconFg: "var(--ok)",
     iconPath: "M12 3 4 6.5v5c0 4.5 3.3 7.8 8 9.5 4.7-1.7 8-5 8-9.5v-5L12 3Zm-3 8 2 2 4-4",
@@ -110,6 +115,10 @@ export default function Onboarding() {
       return;
     }
     setStep((current) => current + 1);
+  }
+
+  function back() {
+    setStep((current) => Math.max(0, current - 1));
   }
 
   if (!mounted || !open) return null;
@@ -170,6 +179,7 @@ export default function Onboarding() {
             <p className="mt-3.5 max-w-[300px] text-[15.5px] leading-[1.55] text-muted">
               {current.body}
             </p>
+            {current.points && <StepHints points={current.points} />}
           </>
         )}
       </div>
@@ -178,23 +188,56 @@ export default function Onboarding() {
         className="relative z-[2] shrink-0 px-7 pb-7 pt-5"
         style={{ paddingBottom: "calc(28px + env(safe-area-inset-bottom))" }}
       >
-        <button
-          type="button"
-          onClick={next}
-          className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-[color:var(--ink)] p-[17px] text-[16px] font-extrabold text-[color:var(--paper)]"
-        >
-          {current.cta}
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M4 12h15M13 6l6 6-6 6"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        <div className="flex gap-2.5">
+          {step > 0 && (
+            <button
+              type="button"
+              onClick={back}
+              className="flex min-h-[56px] w-[104px] shrink-0 items-center justify-center gap-1.5 rounded-[16px] border border-line bg-surface px-3 text-[14px] font-extrabold text-text"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M20 12H5M11 6l-6 6 6 6"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Zurück
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={next}
+            className="flex min-h-[56px] flex-1 items-center justify-center gap-2 rounded-[16px] bg-[color:var(--ink)] px-4 text-[16px] font-extrabold text-[color:var(--paper)]"
+          >
+            {current.cta}
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M4 12h15M13 6l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function StepHints({ points }: { points: string[] }) {
+  return (
+    <div className="mt-5 space-y-2">
+      {points.map((point) => (
+        <div key={point} className="flex items-start gap-2.5 rounded-[14px] border border-line bg-surface/75 px-3 py-2.5">
+          <span className="mt-1 h-2 w-2 shrink-0 rotate-45 bg-[color:var(--accent)]" />
+          <p className="text-[13px] font-bold leading-snug text-text">{point}</p>
+        </div>
+      ))}
     </div>
   );
 }
