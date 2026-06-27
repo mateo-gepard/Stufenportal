@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
+import { useApp } from "@/components/AppContext";
 import type { TodayDigest } from "@/lib/types";
 import { Card, SkeletonList } from "@/components/ui";
 import { IconCheck, IconSparkle } from "@/components/icons";
@@ -10,6 +11,7 @@ import { until } from "@/lib/format";
 import { appDateParts, appHour, appMonthShort, formatAppDate } from "@/lib/time";
 
 export default function TodayPage() {
+  const { user } = useApp();
   const [data, setData] = useState<TodayDigest | null>(null);
   const [err, setErr] = useState("");
 
@@ -23,7 +25,9 @@ export default function TodayPage() {
 
   const todayLabel = formatAppDate(Date.now(), { weekday: "short", day: "numeric", month: "short" });
   const hour = appHour();
-  const greeting = hour < 12 ? "Guten Morgen" : hour < 18 ? "Hey, heute" : "Guten Abend";
+  const greeting = hour < 12 ? "Guten Morgen" : hour < 18 ? "Guten Mittag" : "Guten Abend";
+  const firstName = user?.display_name.split(/\s+/)[0];
+  const greetingText = firstName ? `${greeting}, ${firstName}` : greeting;
 
   return (
     <div className="sp-in pb-6">
@@ -43,7 +47,7 @@ export default function TodayPage() {
               </div>
             </div>
             <h1 className="sp-display mt-4 text-[38px] leading-[0.98]">
-              <span className="bg-[linear-gradient(transparent_58%,var(--pop)_58%)] px-0.5">{greeting}</span>
+              <span className="bg-[linear-gradient(transparent_58%,var(--pop)_58%)] px-0.5">{greetingText}</span>
             </h1>
           </header>
 

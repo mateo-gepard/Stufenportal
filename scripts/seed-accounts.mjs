@@ -118,7 +118,7 @@ async function ensureTables(db) {
       sort_name            TEXT NOT NULL,
       password_hash        TEXT NOT NULL,
       role                 TEXT NOT NULL DEFAULT 'student',
-      show_on_leaderboard  INTEGER NOT NULL DEFAULT 0,
+      show_on_leaderboard  INTEGER NOT NULL DEFAULT 1,
       created_at           TEXT NOT NULL,
       updated_at           TEXT NOT NULL,
       last_login_at        TEXT
@@ -182,9 +182,9 @@ async function seedUsers(db, entries) {
     }
 
     await db.execute({
-      sql: `INSERT INTO users (id, roster_key, display_name, sort_name, password_hash, role, created_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?)`,
-      args: [newId(), entry.roster_key, entry.display_name, entry.sort_name, hashPassword(pwd), nextRole, now, now],
+      sql: `INSERT INTO users (id, roster_key, display_name, sort_name, password_hash, role, show_on_leaderboard, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?)`,
+      args: [newId(), entry.roster_key, entry.display_name, entry.sort_name, hashPassword(pwd), nextRole, 1, now, now],
     });
     csvRows.push([entry.display_name, entry.sort_name, pwd, nextRole, "created"]);
   }

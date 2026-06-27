@@ -4,7 +4,7 @@
 
 Das Stufenportal ist eine mobile-first PWA fuer die Selbstorganisation einer Abiturstufe. Es ersetzt verstreute WhatsApp-Chats, Google-Formulare, Tabellen, Kassenlisten, Umfragen und Einzelnotizen durch eine gemeinsame App fuer die ganze Stufe.
 
-Die App ist fuer Abi '27 gedacht und konzentriert sich auf die Dinge, die im Schulalltag wirklich gebraucht werden: Heute-Uebersicht, Events, Eintragungslisten, News, Abstimmungen, Kasse, Abizeitung, Leaderboard und Sprecher-Verwaltung.
+Die App ist fuer Abi '27 gedacht und konzentriert sich auf die Dinge, die im Schulalltag wirklich gebraucht werden: Heute-Uebersicht, Events, eigene Aufgaben/Einteilungen, Eintragungslisten, News, Abstimmungen, Kasse, Abizeitung, Leaderboard und Sprecher-Verwaltung.
 
 Das Produkt nutzt zugewiesene Accounts fuer alle 99 Personen aus der Stufenliste. Jede Person meldet sich mit suchbarem Namen und einem 6-stelligen Startpasswort an. Dadurch koennen Votes, Eintragungen, Leaderboard und Sprecherrechte eindeutig einer Person zugeordnet werden, ohne E-Mail-Registrierung oder offene Selbstanmeldung.
 
@@ -37,6 +37,7 @@ Typische Situationen:
 - "Was steht heute an?"
 - "Bis wann muss ich abstimmen?"
 - "Wo trage ich mich ein?"
+- "Wo sehe ich, wofuer ich eingeteilt bin?"
 - "Wie viel Geld ist in der Kasse?"
 - "Welche Events sind geplant?"
 - "Wo lade ich ein Zitat oder Foto fuer die Abizeitung hoch?"
@@ -55,6 +56,7 @@ Die App ist um eine Bottom-Navigation gebaut:
 Weitere wichtige Bereiche liegen im Mehr-Tab:
 
 - Kasse
+- Meine Aufgaben
 - Leaderboard
 - Abizeitung
 - Einstellungen

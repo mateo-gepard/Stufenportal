@@ -91,7 +91,7 @@ async function migrate(): Promise<void> {
       sort_name            TEXT NOT NULL,
       password_hash        TEXT NOT NULL,
       role                 TEXT NOT NULL DEFAULT 'student',
-      show_on_leaderboard  INTEGER NOT NULL DEFAULT 0,
+      show_on_leaderboard  INTEGER NOT NULL DEFAULT 1,
       created_at           TEXT NOT NULL,
       updated_at           TEXT NOT NULL,
       last_login_at        TEXT
@@ -299,7 +299,7 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS members (
       device_id           TEXT PRIMARY KEY,
       name                TEXT NOT NULL,
-      show_on_leaderboard INTEGER NOT NULL DEFAULT 0,
+      show_on_leaderboard INTEGER NOT NULL DEFAULT 1,
       created_at          TEXT NOT NULL,
       updated_at          TEXT NOT NULL
     );

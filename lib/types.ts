@@ -176,3 +176,32 @@ export interface TodayDigest {
     closes_at: string | null;
   }[];
 }
+
+export interface MyAssignedMilestone {
+  id: string;
+  title: string;
+  done: boolean;
+  assignee: string | null;
+  due_at: string | null;
+  event_id: string;
+  event_title: string;
+  event_start_at: string | null;
+  event_status: EventStatus;
+}
+
+export interface MySignupTask {
+  id: string;
+  status: "confirmed" | "waitlist";
+  event_id: string;
+  event_title: string;
+  event_start_at: string | null;
+  list_title: string;
+  slot_label: string;
+  capacity: number | null;
+}
+
+export interface MyTasksData {
+  open_milestones: MyAssignedMilestone[];
+  done_milestones: MyAssignedMilestone[];
+  signups: MySignupTask[];
+}

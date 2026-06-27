@@ -117,6 +117,7 @@ export default function MorePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
+        <NavTile href="/tasks" label="Meine Aufgaben" sub="Einteilungen" icon={<IconCheck size={21} />} tone="info" />
         <NavTile href="/kasse" label="Kasse" sub="Stand & Buch" icon={<IconEuro size={21} />} tone="ok" />
         <NavTile href="/leaderboard" label="Leaderboard" sub="Punkte & Ränge" icon={<IconMedal size={21} />} tone="pop" />
         <NavTile href="/abizeitung" label="Abizeitung" sub="Zitate & Fotos" icon={<IconPencil size={21} />} tone="info" />
@@ -230,7 +231,7 @@ export default function MorePage() {
       <p className="mt-8 px-1 text-[12px] leading-relaxed text-muted">
         Dein Account ist fest mit der Stufenliste verbunden. Abstimmungen sind dadurch auf eine Stimme pro Person
         begrenzt; bei anonymen Votes bleibt nur die Auswahl anonymisiert gespeichert. Das Leaderboard ist freiwillig
-        und standardmäßig aus.
+        und standardmäßig an.
       </p>
     </div>
   );
