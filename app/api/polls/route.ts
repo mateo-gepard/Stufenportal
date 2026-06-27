@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { getDb, batch } from "@/lib/db";
-import { requireAdmin, deviceId, voterHash } from "@/lib/auth";
+import { requireAdmin, currentUser, deviceId, voterHash } from "@/lib/auth";
 import { newId, nowIso, readJson, trimmed, str, int, oneOf } from "@/lib/util";
 import { autoClose, rankedMaxPriorities } from "@/lib/polls";
 import { stufenlisteSnapshotStatements } from "@/lib/stufenliste";
@@ -16,6 +16,7 @@ const METHODS = ["single", "approval", "ranked"] as const;
 export async function GET(req: Request) {
   const db = getDb();
   const device = deviceId(req);
+  const user = await currentUser();
   const polls = await db
     .prepare("SELECT * FROM polls WHERE deleted_at IS NULL ORDER BY (status != 'open'), created_at DESC")
     .all<any>();
@@ -26,7 +27,12 @@ export async function GET(req: Request) {
       const totalRow = await db.prepare("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?").get<{ n: number }>(p.id);
       const total = totalRow?.n ?? 0;
       let voted = false;
-      if (device) {
+      if (user) {
+        const col = p.anonymous ? "voter_hash" : "user_id";
+        const val = p.anonymous ? voterHash(p.poll_secret, `user:${user.id}`) : user.id;
+        voted = !!(await db.prepare(`SELECT 1 AS x FROM ballots WHERE poll_id = ? AND ${col} = ?`).get(p.id, val));
+      }
+      if (!voted && device) {
         const col = p.anonymous ? "voter_hash" : "device_id";
         const val = p.anonymous ? voterHash(p.poll_secret, device) : device;
         voted = !!(await db.prepare(`SELECT 1 AS x FROM ballots WHERE poll_id = ? AND ${col} = ?`).get(p.id, val));
@@ -49,7 +55,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
 
   const body = await readJson(req);

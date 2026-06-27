@@ -7,6 +7,7 @@ next-env.d.ts
 .env*.local
 /data/*.db
 /data/*.db-*
+/data/account-passwords*.csv
 /data/uploads
 .DS_Store
 *.tsbuildinfo

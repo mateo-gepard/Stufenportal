@@ -6,7 +6,7 @@ Das Stufenportal ist eine mobile-first PWA fuer die Selbstorganisation einer Abi
 
 Die App ist fuer Abi '27 gedacht und konzentriert sich auf die Dinge, die im Schulalltag wirklich gebraucht werden: Heute-Uebersicht, Events, Eintragungslisten, News, Abstimmungen, Kasse, Abizeitung, Leaderboard und Sprecher-Verwaltung.
 
-Das Produkt funktioniert bewusst ohne klassischen Account. Jede Person bekommt nur eine zufaellige lokale Geraete-ID. Namen werden nur dann abgefragt, wenn eine Funktion sie wirklich braucht, zum Beispiel bei Eintragungen, Kommentaren, Abizeitung-Beitraegen oder anonymen Abstimmungen mit Stufenlisten-Abgleich.
+Das Produkt nutzt zugewiesene Accounts fuer alle 99 Personen aus der Stufenliste. Jede Person meldet sich mit suchbarem Namen und einem 6-stelligen Startpasswort an. Dadurch koennen Votes, Eintragungen, Leaderboard und Sprecherrechte eindeutig einer Person zugeordnet werden, ohne E-Mail-Registrierung oder offene Selbstanmeldung.
 
 ## Produktidee
 
@@ -17,8 +17,8 @@ Wichtige Leitlinien:
 - Alles Wichtige ist auf dem Handy in wenigen Sekunden erreichbar.
 - Die Startseite beantwortet zuerst: Was ist heute wichtig?
 - Sprecherinnen und Sprecher koennen verwalten, alle anderen koennen teilnehmen.
-- Keine Registrierung, keine E-Mail, kein Passwort.
-- Datenschutz durch minimale Identitaet statt durch komplizierte Konto-Logik.
+- Keine offene Registrierung, keine E-Mail, keine selbst erfundenen Profile.
+- Datenschutz durch zugewiesene Stufen-Accounts, serverseitige Sessions und klare Sichtbarkeitsregeln.
 - Oeffentliche Oberflaechen zeigen nur das, was fuer die jeweilige Funktion noetig ist.
 - Planung und echte Buchungen bleiben sauber getrennt.
 - Abstimmungen sollen einfach wirken, aber fair und missbrauchsarm sein.
@@ -60,7 +60,7 @@ Weitere wichtige Bereiche liegen im Mehr-Tab:
 - Einstellungen
 - Farbthema
 - Onboarding erneut ansehen
-- Sprecher-Modus
+- Account und Logout
 - Verwaltung
 
 Detailseiten nutzen kontextuelle Topbars mit Zurueck-Button, kleinem Kicker und Titel. Admin-Aktionen erscheinen nicht dauerhaft als laute UI, sondern kontextbezogen ueber kleine Aktionsbuttons und Bottom-Sheets.
@@ -162,6 +162,40 @@ Animationen sind subtil:
 - Theme-/Step-Transitions im Onboarding
 - keine aufdringlichen Bounce-Effekte
 
+## Accounts und Login
+
+Die App ist account-basiert, aber bewusst niedrigschwellig:
+
+- Jede Person aus der Stufenliste bekommt genau einen Account.
+- Login erfolgt im letzten Onboarding-Schritt per freiem Namensfeld plus 6-stelligem Startpasswort.
+- Es werden keine Namen vorgeschlagen; der Server loest den eingegebenen Namen gegen die Stufenliste auf.
+- Eindeutige Vornamen, Nachnamen oder volle Namen funktionieren; mehrdeutige Namen muessen genauer eingegeben werden.
+- Das Startpasswort wird lokal per `npm run seed:accounts` erzeugt.
+- Passwoerter werden mit Node `crypto.scrypt` und Salt gehasht.
+- Die Klartext-Passwortliste wird nur lokal in `data/account-passwords.csv` geschrieben und per `.gitignore` ausgeschlossen.
+- Sessions laufen ueber ein httpOnly-Cookie `sp_session`.
+- In der Datenbank wird nur ein Hash des Session-Tokens gespeichert.
+- Sessions laufen nach 30 Tagen ab.
+
+Rollen:
+
+- `student`: normaler Account.
+- `sprecher`: darf Inhalte erstellen, bearbeiten, moderieren und verwalten.
+
+Seeding:
+
+- `npm run seed:accounts` legt alle 99 Accounts an.
+- Re-run ist idempotent und dupliziert keine Accounts.
+- `npm run seed:accounts -- --rotate` setzt neue 6-Zeichen-Passwoerter.
+- Default-Sprecher sind Mio Boege, Luzia Seitz, Carlotta Hattig, Marietta Siebel, Sven Kriegel, Elias Zimmermann und Olivia Pfingstgraf.
+- Weitere initiale Sprecher koennen zusaetzlich ueber `INITIAL_SPEAKER_NAMES="Mamaladze, Mateo;..."` gesetzt werden.
+
+Legacy-Kompatibilitaet:
+
+- Alte `device_id`-Daten bleiben lesbar.
+- Eindeutig zuordenbare alte Punkte, Kommentare, Eintragungen, Abizeitungseintraege und Votes koennen beim Seeding auf Accounts gemappt werden.
+- Legacy-Device-Ownership bleibt als Fallback fuer alte eigene Eintraege erhalten.
+
 ## Onboarding
 
 Das Onboarding ist fullscreen, mobile-first und nicht scrollbasiert. Es nutzt eine feste untere Weiter-Aktion, einen Fortschrittsindikator oben und klare kurze Texte pro Schritt.
@@ -178,10 +212,13 @@ Aktuelle Struktur:
    Erklaert Events, Meilensteine, Eintragungslisten, Wartelisten und Kommentare.
 
 4. Abstimmen - fair  
-   Erklaert Single-, Mehrfach- und Ranking-Abstimmungen sowie den anonymen Stufenlisten-Abgleich.
+   Erklaert Single-, Mehrfach- und Ranking-Abstimmungen sowie eine Stimme pro Account.
 
-5. Kein Account noetig  
-   Erklaert die lokale Geraete-ID und dass Namen nur funktionsbezogen abgefragt werden.
+5. Mehr und Account
+   Erklaert Mehr-Tab, Leaderboard-Opt-in, Logout und Sprecherrechte als Account-Rolle.
+
+6. Login
+   Freies Namensfeld plus Passwort, ohne Account-Vorschlagsliste. Wenn Name und Passwort passen, startet die App direkt als diese Person.
 
 Prinzipien:
 
@@ -237,6 +274,7 @@ Sprecher-Funktionen:
 - Event bearbeiten
 - Status aendern
 - Meilensteine erstellen und abhaken
+- Meilensteine/Aufgaben per Account-Suche mehreren Personen zuordnen
 - Listen und Slots verwalten
 - Event loeschen bzw. in Papierkorb legen
 
@@ -255,7 +293,7 @@ Regeln:
 - Kassenziele sind Planwerte, keine echten Buchungen.
 - Sie werden als Cent-Betraege gespeichert.
 - Leere oder 0-Werte werden als kein Ziel behandelt.
-- Nur Sprecher/Admins koennen Ziele setzen oder aendern.
+- Nur Sprecher koennen Ziele setzen oder aendern.
 - Die Detailseite zeigt das Ziel beim Event.
 - Die Kasse zeigt alle geplanten Event-Ziele separat.
 - Kassenziele beeinflussen Kassenstand, Einnahmen und Ausgaben nicht.
@@ -323,7 +361,7 @@ Anonyme Abstimmungen sollen zwei Dinge gleichzeitig schaffen:
 - Die Auswahl bleibt anonym.
 - Jede Person aus der Stufe kann nur einmal abstimmen.
 
-Dafuer gibt die abstimmende Person ihren Namen ein. Dieser Name wird nicht oeffentlich angezeigt und nicht neben der Auswahl gespeichert. Server-seitig wird er gegen eine Stufenliste geprueft.
+Dafuer muss die abstimmende Person eingeloggt sein. Der Account wurde bereits aus der Stufenliste erzeugt, deshalb ist keine zusaetzliche Namenseingabe mehr noetig. Die Auswahl wird bei anonymen Polls nicht oeffentlich mit dem Namen verbunden.
 
 Aktuelle Stufenliste:
 
@@ -336,28 +374,19 @@ Aktuelle Stufenliste:
 
 Technisches Prinzip:
 
-- Jede anonyme Abstimmung bekommt eine eigene Roster-Liste.
-- Diese Liste besteht aus `poll_roster_entries` und `poll_roster_aliases`.
-- Beim Abstimmen wird der Name zu einem Roster-Eintrag aufgeloest.
-- Der Roster-Eintrag wird fuer diese Poll als benutzt markiert.
-- Der Ballot speichert keinen Klartextnamen.
-- Stattdessen wird ein Hash aus Poll-Secret und Roster-Eintrag genutzt.
-- Dadurch ist "ein Name pro Poll nur einmal" garantiert.
+- Neue anonyme Stimmen speichern keinen Klartextnamen und keine oeffentliche Account-Zuordnung.
+- Stattdessen wird `voter_hash = HMAC(poll_secret, "user:" + user.id)` gespeichert.
+- Dadurch ist eine Stimme pro Account und Poll garantiert.
 - Gleichzeitig bleibt jede Abstimmung individuell: Eine Person kann bei Poll A abstimmen und bei Poll B wieder neu.
+- Alte anonyme Roster-Snapshots (`poll_roster_entries`, `poll_roster_aliases`) bleiben lesbar und koennen beim Seeding auf neue User-Hashes migriert werden.
 
 Sync fuer bestehende Polls:
 
 - Bestehende anonyme Abstimmungen koennen alte Snapshot-Daten haben.
-- Beim naechsten Namensabgleich wird der Poll-Snapshot mit der aktuellen Stufenliste synchronisiert.
-- Bereits benutzte Eintraege sollen erhalten bleiben.
-- Neue/corrected Namen und Aliase werden nachgezogen.
+- Beim Account-Seeding werden eindeutig zuordenbare alte Roster-Stimmen auf den neuen Account-Hash gemappt.
+- Dadurch kann dieselbe Person nach dem Login nicht erneut fuer denselben alten anonymen Poll abstimmen.
 
-Namenskonflikte:
-
-- Wenn ein Name schon als benutzt gilt, aber die Person nicht abgestimmt hat, kann sie einen Konflikt melden.
-- Die Meldung enthaelt die betroffene Abstimmung und den eingegebenen Namen.
-- Die Auswahl bleibt weiterhin privat.
-- Sprecher koennen gemeldete Konflikte in der Verwaltung ansehen und bearbeiten.
+Namenskonflikte sind fuer neue anonyme Votes nicht mehr Teil des normalen Flows, weil der Account selbst die Identitaet absichert. Alte Meldungen bleiben in der Verwaltung sichtbar, damit bereits eingegangene Konflikte nicht verloren gehen.
 
 ## Kasse
 
@@ -398,7 +427,7 @@ Beitragstypen:
 - Schnappschuesse/Fotos
 - Bildunterschriften
 - kurze Sprueche
-- optionaler Autorname
+- Autorname aus dem Account
 - optionaler zitierter Name
 
 Darstellung:
@@ -426,19 +455,16 @@ Das Leaderboard ist freiwillig und opt-in.
 Prinzipien:
 
 - Niemand erscheint automatisch.
-- Nutzer muessen ihren Namen setzen und Sichtbarkeit aktivieren.
-- Sprecher koennen Punkte mit Grund vergeben.
+- Nutzer muessen Sichtbarkeit aktivieren; der Name kommt aus dem Account.
+- Sprecher koennen Punkte mit Grund per Account-Suche an eine oder mehrere Personen vergeben.
 - Personen mit 0 Punkten erscheinen, wenn sie opt-in sind.
 - Punktehistorie bleibt nachvollziehbar.
 
-Deduping:
+Deduping/Legacy:
 
-- Doppelte Namen werden zusammengefuehrt.
-- Vergleich ist case-insensitive.
-- Umlaute/Akzente werden normalisiert.
-- Wortreihenfolge wird ignoriert, damit `Max Mueller` und `Mueller Max` zusammenfallen.
-- Bei Duplikaten bleibt der Eintrag mit mehr Punkten.
-- Bei Gleichstand ist die Auswahl deterministisch; der aktuelle Nutzer kann bevorzugt als `mine` markiert werden.
+- Neue Daten brauchen kein Namens-Deduping mehr, weil Accounts eindeutig sind.
+- Die bestehende Dedupe-Logik bleibt als Schutz fuer Legacy-Zeilen erhalten.
+- `mine` wird primaer ueber `user_id` markiert.
 
 Darstellung:
 
@@ -458,17 +484,17 @@ Enthaelt:
 - Verwaltung
 - Farbthema
 - Light/Dark Mode
-- Name speichern
+- Accountanzeige und Logout
 - Leaderboard opt-in/opt-out
 - Push-Benachrichtigungen
 - Onboarding erneut starten
-- Sprecher-Modus aktivieren oder verlassen
+- Sprecherrolle anzeigen
 
 Der Mehr-Tab soll nicht wie ein Restemenue wirken, sondern wie ein klarer Werkzeugbereich.
 
-## Sprecher-Modus und Verwaltung
+## Sprecherrechte und Verwaltung
 
-Sprecher-Modus wird per Code aktiviert und serverseitig geprueft.
+Sprecherrechte liegen direkt als Rolle `sprecher` am Account. Der fruehere Code-basierte Sprecher-Modus ist aus der UI entfernt.
 
 Sprecher koennen:
 
@@ -479,6 +505,8 @@ Sprecher koennen:
 - Abstimmungen erstellen, schliessen, wieder oeffnen oder loeschen.
 - Kassenbuchungen erstellen und loeschen.
 - Punkte vergeben.
+- Accountliste einsehen.
+- Passwoerter pro Person resetten und einmalig anzeigen.
 - Abizeitungseinreichungen moderieren.
 - Papierkorb einsehen.
 - geloeschte Inhalte wiederherstellen.
@@ -488,28 +516,29 @@ Loeschungen sind in der Regel Soft-Deletes. Inhalte verschwinden aus der oeffent
 
 ## Datenschutz und Identitaet
 
-Die App vermeidet klassische Accounts.
+Die App nutzt zugewiesene Accounts statt offener Registrierung.
 
 Gespeichert/benutzt:
 
-- zufaellige Geraete-ID
-- lokaler Name, wenn gesetzt
+- Account aus der Stufenliste
+- Passwort-Hash mit Salt
+- httpOnly Session-Cookie plus gehashter Session-Eintrag
+- Legacy-Geraete-ID nur fuer alte Daten und Fallback-Ownership
 - lokale Theme- und Onboarding-Preferences
-- funktionsbezogene Namen bei Eintragungen, Kommentaren, Abizeitung oder anonymem Poll-Abgleich
+- funktionsbezogene Inhalte wie Kommentare, Eintragungen, Abizeitung und Votes
 
 Nicht noetig:
 
 - E-Mail
-- Passwort
-- Login-Konto
-- oeffentliche Klarnamen fuer alle Aktionen
+- offene Registrierung
+- selbst gesetzte Profilnamen
+- oeffentliche Klarnamen fuer anonyme Votes
 
 Anonyme Abstimmungen:
 
-- Klartextname wird fuer den Abgleich genutzt.
+- Account wird fuer die Einmaligkeit genutzt.
 - Auswahl wird nicht mit dem Namen veroeffentlicht.
-- Ballot nutzt fuer anonyme Polls einen Hash.
-- Pro Poll gibt es eine individuelle Roster-Liste.
+- Ballot nutzt fuer anonyme Polls einen Hash aus Poll-Secret und Account-ID.
 - Jede Poll hat dadurch eine eigene "wer hat schon abgestimmt"-Liste.
 
 ## Technisches Konzept
@@ -528,6 +557,8 @@ Stack:
 
 Datenbankbereiche:
 
+- Users
+- User Sessions
 - Events
 - Milestones
 - Signup-Listen
@@ -553,12 +584,13 @@ Migrationsprinzip:
 - Tabellen werden per `CREATE TABLE IF NOT EXISTS` angelegt.
 - Neue Spalten werden mit `addColumnIfMissing` Turso-sicher nachgezogen.
 - Features wie Event-Kassenziele und Ranked-Voting-Konfiguration sind migrationsfaehig eingebaut.
+- Account-Spalten wie `user_id` werden additiv ergaenzt, damit Legacy-Daten bestehen bleiben.
 
 ## API- und Rechteprinzipien
 
 Oeffentliche APIs liefern nur Daten, die fuer die normale UI noetig sind.
 
-Admin-geschuetzte Aktionen:
+Sprecher-geschuetzte Aktionen:
 
 - Content erstellen/bearbeiten/loeschen.
 - Kassenbuchungen mit sensiblen Details.
@@ -568,17 +600,21 @@ Admin-geschuetzte Aktionen:
 
 Serverseitige Regeln:
 
-- Admin wird in API-Routen geprueft.
+- Sprecherrolle wird in API-Routen geprueft.
 - Client-UI ist nur Komfort, keine Sicherheitsgrenze.
 - Fristen bei Polls werden serverseitig auto-geschlossen.
 - `paid_by` wird fuer Nicht-Admins serverseitig entfernt.
-- Anonyme Namen werden serverseitig gegen die Stufenliste validiert.
+- Neue anonyme Votes werden serverseitig ueber den Account-Hash dedupliziert.
 
 ## Aktueller Funktionsumfang
 
 Aktuell umgesetzt:
 
 - mobile App-Shell mit Bottom-Nav
+- zugewiesene Accounts fuer 99 Personen
+- Login, Logout und Session-Cookie
+- Account-Seeding mit lokaler Passwort-CSV
+- Sprecherrolle am Account
 - Light Mode als Default, Dark Mode persistiert
 - Farbthemen: Stufe, Tinte, Beere, Hain
 - fullscreen Onboarding mit Theme-Auswahl
@@ -588,15 +624,14 @@ Aktuell umgesetzt:
 - News mit Prioritaet, Kategorien, Push und Heute-Promotion
 - Abstimmungen: Single, Approval, Ranked
 - Ranking-Prioritaeten und optionales Veto
-- anonyme Polls mit korrekter Stufenliste und Snapshot-Sync
-- Namenskonflikt melden
+- anonyme Polls mit Account-Hash und Legacy-Roster-Migration
 - Ergebnis-Top-3 mit Expand
 - Kasse mit echten Buchungen und separaten geplanten Zielen
 - Abizeitung mit Zitaten und Bild-Uploads
 - oeffentlich versteckte Lehrernamen bei Zitaten
-- Leaderboard mit Opt-in, 0-Punkte-Sichtbarkeit und Deduping
+- Leaderboard mit Account-Opt-in und 0-Punkte-Sichtbarkeit
 - Mehr-Tab als Werkzeug-/Einstellungszentrale
-- Sprecher-Modus
+- Sprecher-Verwaltung
 - Papierkorb und Restore
 
 ## UX-Ziele fuer weitere Iterationen

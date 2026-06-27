@@ -7,6 +7,8 @@ import { useApp } from "@/components/AppContext";
 import { Card, SkeletonList, Button } from "@/components/ui";
 import { IconChevronRight, IconLock } from "@/components/icons";
 import { dateTime } from "@/lib/format";
+import { Select } from "@/components/form";
+import type { MemberRow } from "@/lib/types";
 
 interface TrashItem {
   id: string;
@@ -35,6 +37,10 @@ export default function AdminPage() {
   const { admin, ready } = useApp();
   const [items, setItems] = useState<TrashItem[] | null>(null);
   const [issues, setIssues] = useState<VoteIssue[] | null>(null);
+  const [accounts, setAccounts] = useState<MemberRow[] | null>(null);
+  const [resetId, setResetId] = useState("");
+  const [resetResult, setResetResult] = useState<{ display_name: string; password: string } | null>(null);
+  const [accountErr, setAccountErr] = useState("");
 
   const load = useCallback(() => {
     if (!admin) return;
@@ -44,6 +50,12 @@ export default function AdminPage() {
     (api("/api/admin/vote-issues") as Promise<{ issues: VoteIssue[] }>)
       .then((d) => setIssues(d.issues))
       .catch(() => setIssues([]));
+    (api("/api/members") as Promise<{ members: MemberRow[] }>)
+      .then((d) => {
+        setAccounts(d.members);
+        setResetId((current) => current || d.members[0]?.user_id || "");
+      })
+      .catch(() => setAccounts([]));
   }, [admin]);
   useEffect(load, [load]);
 
@@ -58,13 +70,28 @@ export default function AdminPage() {
     load();
   }
 
+  async function resetPassword() {
+    if (!resetId) return;
+    setAccountErr("");
+    setResetResult(null);
+    try {
+      const res = (await api("/api/members/reset-password", { method: "POST", body: { user_id: resetId } })) as {
+        display_name: string;
+        password: string;
+      };
+      setResetResult(res);
+    } catch (e) {
+      setAccountErr((e as Error).message);
+    }
+  }
+
   if (ready && !admin)
     return (
       <div className="sp-in pt-10 text-center text-muted">
         <IconLock size={26} className="mx-auto mb-2" />
-        <p>Nur im Sprecher-Modus.</p>
+        <p>Nur fuer Sprecher-Accounts.</p>
         <Link href="/more" className="mt-3 inline-flex items-center justify-center gap-1 text-signal-text">
-          Zu „Mehr" freischalten
+          Zurueck zu Mehr
           <IconChevronRight size={15} />
         </Link>
       </div>
@@ -73,7 +100,7 @@ export default function AdminPage() {
   return (
     <div className="sp-in pb-6">
       <div className="mb-4">
-        <p className="sp-section-kicker">Sprecher-Modus</p>
+        <p className="sp-section-kicker">Sprecher</p>
         <h1 className="sp-page-title">Verwaltung</h1>
       </div>
 
@@ -85,6 +112,35 @@ export default function AdminPage() {
         <QuickLink href="/abizeitung" label="Abizeitung" />
         <QuickLink href="/kasse" label="Kasse" />
       </div>
+
+      <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Accounts</h2>
+      <Card className="mb-6">
+        {!accounts ? (
+          <SkeletonList rows={1} />
+        ) : accounts.length === 0 ? (
+          <p className="text-small text-muted">Noch keine Accounts. Fuehre `npm run seed:accounts` aus.</p>
+        ) : (
+          <div className="space-y-3">
+            <Select value={resetId} onChange={(e) => setResetId(e.target.value)}>
+              {accounts.map((account) => (
+                <option key={account.user_id} value={account.user_id}>
+                  {account.name} · {account.points} Pkt
+                </option>
+              ))}
+            </Select>
+            <Button onClick={resetPassword} variant="surface" full>
+              Passwort resetten
+            </Button>
+            {resetResult && (
+              <div className="rounded-[14px] bg-[color:var(--soft)] p-3">
+                <p className="text-[12px] font-bold text-muted">Neues Passwort fuer {resetResult.display_name}</p>
+                <p className="mt-1 font-display text-[28px] font-black tracking-[0.12em]">{resetResult.password}</p>
+              </div>
+            )}
+            {accountErr && <p className="text-small text-danger">{accountErr}</p>}
+          </div>
+        )}
+      </Card>
 
       <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Abstimmungsprobleme</h2>
       {!issues && <SkeletonList rows={1} />}

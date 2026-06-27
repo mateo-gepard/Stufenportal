@@ -6,7 +6,7 @@ import { newId, readJson, trimmed, str } from "@/lib/util";
 export const runtime = "nodejs";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
   const e = await db.prepare("SELECT id FROM events WHERE id = ? AND deleted_at IS NULL").get(params.id);

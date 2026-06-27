@@ -1,7 +1,8 @@
 import type { LeaderboardRow } from "./types";
 
 export interface RawLeaderboardRow {
-  device_id: string;
+  user_id: string | null;
+  device_id?: string | null;
   name: string;
   points: number;
 }
@@ -30,13 +31,19 @@ function preferRow(
   return next.name.localeCompare(current.name, "de-DE") < 0 ? next : current;
 }
 
-export function buildLeaderboard(rows: RawLeaderboardRow[], currentDevice: string | null): LeaderboardRow[] {
+export function buildLeaderboard(
+  rows: RawLeaderboardRow[],
+  currentUserId: string | null,
+  currentDevice: string | null = null
+): LeaderboardRow[] {
   const deduped = new Map<string, RawLeaderboardRow & { mine: boolean }>();
 
   for (const row of rows) {
     const key = leaderboardNameKey(row.name);
     if (!key) continue;
-    const mine = !!currentDevice && row.device_id === currentDevice;
+    const mine =
+      (!!currentUserId && row.user_id === currentUserId) ||
+      (!!currentDevice && !!row.device_id && row.device_id === currentDevice);
     const next = { ...row, points: row.points ?? 0, mine };
     const current = deduped.get(key);
     if (!current) {

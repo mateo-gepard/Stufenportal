@@ -159,7 +159,7 @@ export interface LeaderboardRow {
 }
 
 export interface MemberRow {
-  device_id: string;
+  user_id: string;
   name: string;
   points: number;
 }

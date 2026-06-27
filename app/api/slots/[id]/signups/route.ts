@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, tx } from "@/lib/db";
-import { deviceId } from "@/lib/auth";
-import { newId, nowIso, readJson, trimmed } from "@/lib/util";
-import { upsertMember } from "@/lib/members";
+import { currentUser, deviceId } from "@/lib/auth";
+import { newId, nowIso } from "@/lib/util";
 
 export const runtime = "nodejs";
 
@@ -17,20 +16,17 @@ async function slotInfo(slotId: string) {
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const device = deviceId(req);
-  if (!device) return NextResponse.json({ error: "Keine Geräte-ID." }, { status: 400 });
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Bitte anmelden." }, { status: 401 });
 
   const db = getDb();
   const slot = await slotInfo(params.id);
   if (!slot) return NextResponse.json({ error: "Slot nicht gefunden." }, { status: 404 });
 
   const existing = await db
-    .prepare("SELECT id FROM signups WHERE slot_id = ? AND device_id = ?")
-    .get(params.id, device);
+    .prepare("SELECT id FROM signups WHERE slot_id = ? AND user_id = ?")
+    .get(params.id, user.id);
   if (existing) return NextResponse.json({ error: "Schon eingetragen." }, { status: 409 });
-
-  const body = await readJson(req);
-  const name = trimmed(body.display_name).slice(0, 40) || "Anonym";
 
   const cntRow = await db
     .prepare("SELECT COUNT(*) AS n FROM signups WHERE slot_id = ? AND status = 'confirmed'")
@@ -44,22 +40,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   await db
-    .prepare("INSERT INTO signups (id,slot_id,device_id,display_name,status,created_at) VALUES (?,?,?,?,?,?)")
-    .run(newId(), params.id, device, name, status, nowIso());
-
-  // Wer sich mit Namen einträgt, wird „bekannt" und damit creditbar.
-  await upsertMember(device, name);
+    .prepare("INSERT INTO signups (id,slot_id,device_id,user_id,display_name,status,created_at) VALUES (?,?,?,?,?,?,?)")
+    .run(newId(), params.id, `user:${user.id}`, user.id, user.display_name, status, nowIso());
 
   return NextResponse.json({ status }, { status: 201 });
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Bitte anmelden." }, { status: 401 });
   const device = deviceId(req);
-  if (!device) return NextResponse.json({ error: "Keine Geräte-ID." }, { status: 400 });
 
   const mine = await getDb()
-    .prepare("SELECT id, status FROM signups WHERE slot_id = ? AND device_id = ?")
-    .get<{ id: string; status: string }>(params.id, device);
+    .prepare("SELECT id, status FROM signups WHERE slot_id = ? AND (user_id = ? OR device_id = ?)")
+    .get<{ id: string; status: string }>(params.id, user.id, device ?? `user:${user.id}`);
   if (!mine) return NextResponse.json({ error: "Nicht eingetragen." }, { status: 404 });
 
   await tx(async (t) => {

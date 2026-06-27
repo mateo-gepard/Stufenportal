@@ -6,7 +6,7 @@ import { nowIso, readJson, trimmed, str } from "@/lib/util";
 export const runtime = "nodejs";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
   const m = await db.prepare("SELECT id FROM milestones WHERE id = ? AND deleted_at IS NULL").get(params.id);
@@ -41,7 +41,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   await getDb()
     .prepare("UPDATE milestones SET deleted_at = ? WHERE id = ?")

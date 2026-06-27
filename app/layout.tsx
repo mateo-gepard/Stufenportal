@@ -5,6 +5,7 @@ import { AppProvider } from "@/components/AppContext";
 import BottomNav from "@/components/BottomNav";
 import ContextTopBar from "@/components/ContextTopBar";
 import Onboarding from "@/components/Onboarding";
+import AuthGate from "@/components/AuthGate";
 
 const hanken = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
 const bricolage = Bricolage_Grotesque({
@@ -47,7 +48,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="sp-device">
               <div className="sp-grain" />
               <ContextTopBar />
-              <main className="sp-content">{children}</main>
+              <main className="sp-content">
+                <AuthGate>{children}</AuthGate>
+              </main>
               <BottomNav />
               <Onboarding />
             </div>

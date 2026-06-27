@@ -135,6 +135,14 @@ interface RosterSnapshotEntry {
   ord: number;
 }
 
+export interface AccountRosterEntry {
+  roster_key: string;
+  display_name: string;
+  sort_name: string;
+  aliases: string[];
+  ord: number;
+}
+
 function aliasesFor(person: StufenPerson): string[] {
   const first = person.first || "";
   const last = person.last;
@@ -160,6 +168,21 @@ function rosterEntries(): RosterSnapshotEntry[] {
     return {
       rosterKey: normalizeRosterName(`${person.last} ${person.first || ""}`),
       displayName,
+      aliases: aliasesFor(person),
+      ord,
+    };
+  });
+}
+
+export function accountRosterEntries(): AccountRosterEntry[] {
+  return STUFENLISTE.map((person, ord) => {
+    const first = person.first || "";
+    const displayName = first ? `${first} ${person.last}` : person.last;
+    const sortName = first ? `${person.last}, ${first}` : person.last;
+    return {
+      roster_key: normalizeRosterName(`${person.last} ${first}`),
+      display_name: displayName,
+      sort_name: sortName,
       aliases: aliasesFor(person),
       ord,
     };

@@ -7,7 +7,6 @@ import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { PollDetail, PollResultRow } from "@/lib/types";
 import { Skeleton, Button, AdminDots, BottomSheet, SheetAction } from "@/components/ui";
-import { Field, Input } from "@/components/form";
 import { IconCheck, IconPlay, IconPlus, IconStop, IconTrash, IconVote } from "@/components/icons";
 
 export default function PollDetailPage({ params }: { params: { id: string } }) {
@@ -23,10 +22,7 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   const [ranking, setRanking] = useState<string[]>([]);
   const [veto, setVeto] = useState("");
   const [resultsExpanded, setResultsExpanded] = useState(false);
-  const [voterName, setVoterName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [flagBusy, setFlagBusy] = useState(false);
-  const [nameIssueSent, setNameIssueSent] = useState(false);
   const [err, setErr] = useState("");
 
   const load = useCallback(() => {
@@ -43,7 +39,6 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
     if (!poll) return;
     setBusy(true);
     setErr("");
-    setNameIssueSent(false);
     let body: Record<string, unknown> = {};
     if (poll.method === "single") {
       if (!single) return setErr("Bitte eine Option wählen."), setBusy(false);
@@ -62,37 +57,16 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
       if (poll.ranked_veto_enabled && !veto) return setErr("Bitte ein Veto wählen."), setBusy(false);
       body = poll.ranked_veto_enabled ? { ranking, veto_option_id: veto } : { ranking };
     }
-    if (poll.anonymous) {
-      if (!voterName.trim()) return setErr("Bitte gib deinen Namen zur Prüfung ein."), setBusy(false);
-      body.voter_name = voterName.trim();
-    }
     try {
       const d = (await api(`/api/polls/${params.id}/vote`, { method: "POST", body })) as { poll: PollDetail };
       setPoll(d.poll);
       setRanking([]);
       setVeto("");
-      setVoterName("");
     } catch (e) {
       setErr((e as Error).message);
       load();
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function flagNameIssue() {
-    if (!poll || !voterName.trim()) return;
-    setFlagBusy(true);
-    try {
-      await api(`/api/polls/${params.id}/name-issue`, {
-        method: "POST",
-        body: { voter_name: voterName.trim() },
-      });
-      setNameIssueSent(true);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setFlagBusy(false);
     }
   }
 
@@ -202,53 +176,24 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
           {canVote && poll.anonymous && (
             <div className="mt-3 rounded-[18px] border border-line bg-surface p-3">
-              <div className="mb-3 flex gap-3 rounded-[14px] bg-[color:var(--info-soft)] px-3 py-2.5 text-[12px] leading-relaxed text-[color:var(--info)]">
+              <div className="flex gap-3 rounded-[14px] bg-[color:var(--info-soft)] px-3 py-2.5 text-[12px] leading-relaxed text-[color:var(--info)]">
                 <IconVote size={18} className="mt-0.5 shrink-0" />
                 <p>
-                  Gib zur Prüfung deinen Namen ein. Vorname, Nachname oder beides funktioniert, Groß- und
-                  Kleinschreibung ist egal. Der Name wird nicht angezeigt und nicht mit deiner Auswahl veröffentlicht.
+                  Diese Abstimmung ist anonym. Dein Account wird nur genutzt, um eine Stimme pro Person zu sichern;
+                  deine Auswahl wird nicht öffentlich mit deinem Namen verbunden.
                 </p>
               </div>
-              <Field
-                label="Name zur Prüfung"
-                hint="Nur für den Abgleich mit der Stufenliste. Dein Name wird nicht angezeigt."
-              >
-                <Input
-                  value={voterName}
-                  onChange={(e) => {
-                    setVoterName(e.target.value);
-                    setNameIssueSent(false);
-                  }}
-                  placeholder="Vorname, Nachname oder beides"
-                  autoComplete="off"
-                />
-              </Field>
             </div>
           )}
 
           {canVote && err && <p className="mt-3 text-small text-danger">{err}</p>}
-          {canVote && poll.anonymous && err === "Mit diesem Namen wurde schon abgestimmt." && (
-            <div className="mt-2 rounded-xl border border-line bg-surface p-3">
-              <p className="mb-2 text-[12px] text-muted">
-                Falls du sicher nicht abgestimmt hast, melde den Namenskonflikt. Das Sprecher-Team sieht dann
-                nur deinen eingegebenen Namen und die betroffene Abstimmung, nicht deine Auswahl.
-              </p>
-              {nameIssueSent ? (
-                <p className="text-small font-medium text-success">Meldung gespeichert.</p>
-              ) : (
-                <Button onClick={flagNameIssue} disabled={flagBusy || !voterName.trim()} variant="surface" full>
-                  {flagBusy ? "Melde…" : "Ich habe nicht abgestimmt"}
-                </Button>
-              )}
-            </div>
-          )}
           <VoteSubmitButton onClick={vote} disabled={busy || !canVote}>
             {busy ? "Senden…" : poll.voted ? "Stimme abgegeben" : "Stimme abgeben"}
           </VoteSubmitButton>
           <p className="mt-2 text-center text-[12px] text-muted">
             {poll.anonymous
-              ? "Eine Stimme pro Name aus der Stufenliste. Deine Auswahl bleibt anonym."
-              : "Eine Stimme pro Gerät."}
+              ? "Eine Stimme pro Account. Deine Auswahl bleibt anonym."
+              : "Eine Stimme pro Account."}
           </p>
         </section>
       )}

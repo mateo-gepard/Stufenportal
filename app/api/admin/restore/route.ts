@@ -18,7 +18,7 @@ const TABLES: Record<string, string> = {
 };
 
 export async function POST(req: Request) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
 
   const body = await readJson(req);

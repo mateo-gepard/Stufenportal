@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppContext";
 import { colorThemes, type ColorTheme, type ColorThemeKey } from "@/lib/themes";
 
-const STORAGE_KEY = "sp_onboarded_v2";
+const STORAGE_KEY = "sp_onboarded_v4";
 const SHOW_EVENT = "sp:show-onboarding";
 
 type OnboardingStep = {
-  kind?: "info" | "theme";
+  kind?: "info" | "theme" | "login";
   kicker: string;
   title: string;
   body: string;
@@ -50,8 +50,8 @@ const steps: OnboardingStep[] = [
   {
     kicker: "Schritt 4",
     title: "Abstimmen, ohne Chaos",
-    body: "Votes können Single, Mehrfach oder Ranking sein. Bei anonymen Votes gibst du deinen Namen nur zur Prüfung ein.",
-    points: ["Deine Auswahl bleibt anonym", "Ein Name kann pro Vote nur einmal stimmen", "Bei Namenskonflikt kannst du melden"],
+    body: "Votes können Single, Mehrfach oder Ranking sein. Dein Account sorgt dafür, dass jede Person nur einmal abstimmt.",
+    points: ["Anonyme Votes zeigen keine Namen", "Ein Account kann pro Vote nur einmal stimmen", "Ergebnisse bleiben wie gewohnt sichtbar"],
     iconBg: "var(--accent-soft)",
     iconFg: "var(--accent)",
     iconPath: "M5 21h14M7 21V9m5 12V4m5 17v-8",
@@ -60,8 +60,8 @@ const steps: OnboardingStep[] = [
   {
     kicker: "Fast fertig",
     title: "Mehr ist deine Werkzeugkiste",
-    body: "Im Mehr-Tab findest du Kasse, Abizeitung, Leaderboard, Farbthema und Sprecher-Modus. Deinen Namen brauchst du nur für konkrete Funktionen.",
-    points: ["Kein Account, keine Mail, kein Passwort", "Leaderboard ist freiwillig", "Onboarding kannst du dort erneut starten"],
+    body: "Im Mehr-Tab findest du Kasse, Abizeitung, Leaderboard, Farbthema und deinen Account. Sprecherrechte hängen direkt an deiner Rolle.",
+    points: ["Leaderboard bleibt freiwillig", "Logout und Rolle stehen im Mehr-Tab", "Onboarding kannst du dort erneut starten"],
     iconBg: "var(--ok-soft)",
     iconFg: "var(--ok)",
     iconPath: "M12 3 4 6.5v5c0 4.5 3.3 7.8 8 9.5 4.7-1.7 8-5 8-9.5v-5L12 3Zm-3 8 2 2 4-4",
@@ -69,29 +69,50 @@ const steps: OnboardingStep[] = [
   },
 ];
 
-export default function Onboarding() {
-  const { colorTheme, setColorTheme } = useApp();
+const loginStep: OnboardingStep = {
+  kicker: "Letzter Schritt",
+  kind: "login",
+  title: "Dein Zugang",
+  body: "Gib deinen Namen so ein, wie du ihn sagen würdest, plus dein 6-stelliges Startpasswort.",
+  cta: "Einloggen",
+};
+
+const authSteps = [...steps, loginStep];
+
+export default function Onboarding({ loginMode = false }: { loginMode?: boolean }) {
+  const { colorTheme, setColorTheme, user, login } = useApp();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const [loginName, setLoginName] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginErr, setLoginErr] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const currentSteps = loginMode ? authSteps : steps;
 
   useEffect(() => {
     setMounted(true);
+    if (loginMode) {
+      setOpen(true);
+      setStep(0);
+      return;
+    }
     try {
       if (localStorage.getItem(STORAGE_KEY) !== "done") setOpen(true);
     } catch {
       setOpen(true);
     }
-  }, []);
+  }, [loginMode]);
 
   useEffect(() => {
+    if (loginMode) return;
     function showOnboarding() {
       setStep(0);
       setOpen(true);
     }
     window.addEventListener(SHOW_EVENT, showOnboarding);
     return () => window.removeEventListener(SHOW_EVENT, showOnboarding);
-  }, []);
+  }, [loginMode]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,14 +124,42 @@ export default function Onboarding() {
   }, [open]);
 
   function finish() {
+    if (loginMode) return;
     try {
       localStorage.setItem(STORAGE_KEY, "done");
     } catch {}
     setOpen(false);
   }
 
-  function next() {
-    if (step >= steps.length - 1) {
+  async function finishLogin() {
+    const name = loginName.trim();
+    const code = password.trim();
+    if (!name || code.length < 4) {
+      setLoginErr("Name oder Passwort fehlt.");
+      return;
+    }
+    setLoginBusy(true);
+    setLoginErr("");
+    try {
+      await login(name, code);
+      try {
+        localStorage.setItem(STORAGE_KEY, "done");
+      } catch {}
+      setOpen(false);
+    } catch (e) {
+      setLoginErr((e as Error).message);
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  async function next() {
+    const current = currentSteps[step] || currentSteps[0];
+    if (current.kind === "login") {
+      await finishLogin();
+      return;
+    }
+    if (step >= currentSteps.length - 1) {
       finish();
       return;
     }
@@ -121,17 +170,18 @@ export default function Onboarding() {
     setStep((current) => Math.max(0, current - 1));
   }
 
-  if (!mounted || !open) return null;
+  if (!mounted || !open || (!user && !loginMode)) return null;
 
-  const current = steps[step] || steps[0];
+  const current = currentSteps[step] || currentSteps[0];
   const isThemeStep = current.kind === "theme";
+  const isLoginStep = current.kind === "login";
 
   return (
     <div className="absolute inset-0 z-[80] flex flex-col overflow-hidden bg-[color:var(--paper)] text-text">
       <div className="sp-grain" />
       <div className="relative z-[2] flex shrink-0 items-center justify-between px-[22px] pt-[18px]">
         <div className="flex gap-1.5">
-          {steps.map((_, index) => (
+          {currentSteps.map((_, index) => (
             <span
               key={index}
               className="h-[7px] rounded transition-all duration-300"
@@ -142,17 +192,29 @@ export default function Onboarding() {
             />
           ))}
         </div>
-        <button
-          type="button"
-          onClick={finish}
-          className="bg-transparent text-[13px] font-bold text-muted"
-        >
-          Überspringen
-        </button>
+        {!loginMode && (
+          <button
+            type="button"
+            onClick={finish}
+            className="bg-transparent text-[13px] font-bold text-muted"
+          >
+            Überspringen
+          </button>
+        )}
       </div>
 
-      <div className={`relative z-[2] flex min-h-0 flex-1 flex-col px-7 ${isThemeStep ? "justify-start pt-6" : "justify-center py-6"}`}>
-        {isThemeStep ? (
+      <div className={`relative z-[2] flex min-h-0 flex-1 flex-col px-7 ${isThemeStep || isLoginStep ? "justify-start pt-6" : "justify-center py-6"}`}>
+        {isLoginStep ? (
+          <LoginStep
+            step={current}
+            name={loginName}
+            password={password}
+            error={loginErr}
+            onName={setLoginName}
+            onPassword={(value) => setPassword(value.toUpperCase())}
+            onSubmit={finishLogin}
+          />
+        ) : isThemeStep ? (
           <ThemeChoiceStep selected={colorTheme} onSelect={setColorTheme} step={current} />
         ) : (
           <>
@@ -210,9 +272,10 @@ export default function Onboarding() {
           <button
             type="button"
             onClick={next}
+            disabled={loginBusy}
             className="flex min-h-[56px] flex-1 items-center justify-center gap-2 rounded-[16px] bg-[color:var(--ink)] px-4 text-[16px] font-extrabold text-[color:var(--paper)]"
           >
-            {current.cta}
+            {loginBusy ? "Einloggen..." : current.cta}
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
                 d="M4 12h15M13 6l6 6-6 6"
@@ -225,6 +288,82 @@ export default function Onboarding() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function LoginStep({
+  step,
+  name,
+  password,
+  error,
+  onName,
+  onPassword,
+  onSubmit,
+}: {
+  step: OnboardingStep;
+  name: string;
+  password: string;
+  error: string;
+  onName: (value: string) => void;
+  onPassword: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="relative mb-5 overflow-hidden rounded-[26px] border-[2.5px] border-[color:var(--ink)] bg-[color:var(--dark)] p-5 text-white shadow-[5px_5px_0_var(--ink)]">
+        <div className="sp-half absolute -right-6 -top-6 h-[150px] w-[150px] text-white/15" />
+        <div className="relative flex h-16 w-16 -rotate-3 items-center justify-center rounded-[20px] bg-[color:var(--pop)] text-[color:var(--ink)] shadow-[3px_3px_0_var(--ink)]">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <rect x="5" y="11" width="14" height="10" rx="2.5" stroke="currentColor" strokeWidth="2" />
+            <path d="M12 15v2" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+          </svg>
+        </div>
+        <p className="relative mt-6 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[color:var(--pop)]">
+          {step.kicker}
+        </p>
+        <h1 className="relative mt-2 font-display text-[35px] font-extrabold leading-[0.98]">{step.title}</h1>
+        <p className="relative mt-3 max-w-[300px] text-[15px] font-semibold leading-[1.45] text-white/70">{step.body}</p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="block rounded-[19px] border border-line bg-surface p-3.5">
+          <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted">Name</span>
+          <input
+            value={name}
+            onChange={(e) => onName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+            placeholder="z. B. Mio Boege"
+            autoComplete="off"
+            className="w-full bg-transparent font-display text-[23px] font-black outline-none placeholder:text-muted"
+          />
+        </label>
+        <label className="block rounded-[19px] border border-line bg-surface p-3.5">
+          <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted">Startpasswort</span>
+          <input
+            value={password}
+            onChange={(e) => onPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+            placeholder="6 Zeichen"
+            type="password"
+            maxLength={6}
+            autoComplete="current-password"
+            className="w-full bg-transparent font-display text-[23px] font-black uppercase tracking-[0.12em] outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-muted"
+          />
+        </label>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {["Name", "Passwort", "Fertig"].map((label, index) => (
+          <div key={label} className="rounded-[14px] border border-line bg-surface px-2 py-2 text-center">
+            <p className="font-display text-[19px] font-black text-[color:var(--accent)]">0{index + 1}</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-muted">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="mt-3 rounded-[14px] bg-[color:var(--danger-soft)] px-3 py-2 text-[13px] font-bold text-danger">{error}</p>}
     </div>
   );
 }

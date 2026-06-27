@@ -23,3 +23,10 @@ export async function pointsFor(deviceId: string): Promise<number> {
     .get<{ p: number }>(deviceId);
   return row?.p ?? 0;
 }
+
+export async function pointsForUser(userId: string): Promise<number> {
+  const row = await getDb()
+    .prepare("SELECT COALESCE(SUM(points),0) AS p FROM point_events WHERE user_id = ? AND deleted_at IS NULL")
+    .get<{ p: number }>(userId);
+  return row?.p ?? 0;
+}

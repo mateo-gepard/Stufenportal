@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Papierkorb: soft-gelöschte Objekte über alle Typen.
 export async function GET() {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
 

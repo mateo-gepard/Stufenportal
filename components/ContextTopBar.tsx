@@ -23,7 +23,7 @@ const topBarRoutes: {
 export default function ContextTopBar() {
   const path = usePathname();
   const router = useRouter();
-  const { admin } = useApp();
+  const { admin, user } = useApp();
   const meta = topBarRoutes.find((route) => route.test(path));
   const [dynamicTitle, setDynamicTitle] = useState("");
 
@@ -57,7 +57,7 @@ export default function ContextTopBar() {
     };
   }, [path]);
 
-  if (!meta) return null;
+  if (!user || !meta) return null;
 
   return (
     <div className="sp-context-topbar relative z-30 flex shrink-0 items-center gap-3 px-[18px] pb-3.5 pt-[22px]">

@@ -77,6 +77,13 @@ export const IconLock = (p: P) => (
   </Svg>
 );
 
+export const IconSearch = (p: P) => (
+  <Svg {...p}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="M16 16l4 4" />
+  </Svg>
+);
+
 export const IconChevronLeft = (p: P) => (
   <Svg {...p} strokeWidth={p.strokeWidth ?? 2}>
     <path d="M15 5l-7 7 7 7" />

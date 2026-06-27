@@ -4,14 +4,12 @@ import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
-import { Card, BottomSheet, Button } from "@/components/ui";
-import { Field, Input } from "@/components/form";
+import { Card, Button } from "@/components/ui";
 import {
   IconBell,
   IconCheck,
   IconEuro,
   IconHome,
-  IconLock,
   IconMedal,
   IconMegaphone,
   IconMoon,
@@ -24,17 +22,11 @@ import type { Me } from "@/lib/types";
 import { colorThemes, type ColorThemeKey } from "@/lib/themes";
 
 export default function MorePage() {
-  const { admin, theme, colorTheme, setColorTheme, toggleTheme, unlock, logout } = useApp();
-  const [unlockOpen, setUnlockOpen] = useState(false);
-  const [nameOpen, setNameOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [err, setErr] = useState("");
+  const { admin, user, theme, colorTheme, setColorTheme, toggleTheme, logout } = useApp();
   const [pushState, setPushState] = useState<string>("");
   const [pushEnabled, setPushEnabled] = useState(false);
 
-  // Lokale Identität (kein Konto): Name nur fürs Leaderboard, opt-in.
   const [me, setMe] = useState<Me | null>(null);
-  const [name, setName] = useState("");
   const [lbErr, setLbErr] = useState("");
   const [lbSaved, setLbSaved] = useState("");
   const [lbBusy, setLbBusy] = useState(false);
@@ -43,30 +35,20 @@ export default function MorePage() {
     (api("/api/me") as Promise<Me>)
       .then((m) => {
         setMe(m);
-        setName(m.name || localStorage.getItem("sp_name") || "");
       })
-      .catch(() => setMe({ name: "", show_on_leaderboard: false, points: 0, history: [] }));
-  }, []);
+      .catch(() => setMe({ name: user?.display_name || "", show_on_leaderboard: false, points: 0, history: [] }));
+  }, [user?.display_name]);
 
   const show = !!me?.show_on_leaderboard;
 
   async function saveLb(on: boolean) {
-    const nm = name.trim();
-    if (on && !nm) {
-      setLbErr("Gib zuerst einen Namen ein.");
-      setLbSaved("");
-      setNameOpen(true);
-      return;
-    }
     setLbBusy(true);
     setLbErr("");
     setLbSaved("");
     try {
-      await api("/api/me", { method: "POST", body: { name: nm || me?.name || "", show_on_leaderboard: on } });
-      if (nm) localStorage.setItem("sp_name", nm);
+      await api("/api/me", { method: "POST", body: { show_on_leaderboard: on } });
       const fresh = (await api("/api/me")) as Me;
       setMe(fresh);
-      setName(fresh.name || nm);
       setLbSaved(on ? "Du bist jetzt auf dem Leaderboard sichtbar." : "Du bist nicht mehr auf dem Leaderboard sichtbar.");
     } catch (e) {
       setLbErr((e as Error).message);
@@ -76,34 +58,7 @@ export default function MorePage() {
   }
 
   function onToggleLb(next: boolean) {
-    if (!next) {
-      // Ausschalten: nur speichern, wenn überhaupt ein Name existiert.
-      if (me?.name || name.trim()) saveLb(false);
-      else {
-        setMe((m) => (m ? { ...m, show_on_leaderboard: false } : m));
-        setLbErr("");
-        setLbSaved("");
-      }
-      return;
-    }
-    // Einschalten: Name vorhanden -> sofort speichern, sonst Feld zeigen.
-    if (name.trim()) saveLb(true);
-    else {
-      setNameOpen(true);
-      setLbSaved("");
-      setLbErr("Gib einen Namen ein und tippe auf Speichern.");
-    }
-  }
-
-  async function doUnlock() {
-    setErr("");
-    try {
-      await unlock(code);
-      setUnlockOpen(false);
-      setCode("");
-    } catch (e) {
-      setErr((e as Error).message);
-    }
+    saveLb(next);
   }
 
   async function enablePush() {
@@ -140,26 +95,6 @@ export default function MorePage() {
     window.dispatchEvent(new Event("sp:show-onboarding"));
   }
 
-  async function saveName() {
-    const nm = name.trim();
-    setLbBusy(true);
-    setLbErr("");
-    setLbSaved("");
-    try {
-      await api("/api/me", { method: "POST", body: { name: nm, show_on_leaderboard: !!me?.show_on_leaderboard } });
-      if (nm) localStorage.setItem("sp_name", nm);
-      const fresh = (await api("/api/me")) as Me;
-      setMe(fresh);
-      setName(fresh.name || nm);
-      setNameOpen(false);
-      setLbSaved("Name gespeichert.");
-    } catch (e) {
-      setLbErr((e as Error).message);
-    } finally {
-      setLbBusy(false);
-    }
-  }
-
   return (
     <div className="sp-in pb-6">
       <div className="mb-4">
@@ -173,9 +108,9 @@ export default function MorePage() {
             <IconHome size={22} />
           </span>
           <div className="min-w-0">
-            <p className="font-display text-[28px] font-black leading-none">{me?.name || name || "Deine Stufe"}</p>
+            <p className="font-display text-[28px] font-black leading-none">{user?.display_name || "Deine Stufe"}</p>
             <p className="mt-1 text-small text-white/62">
-              {me ? `${me.points} ${me.points === 1 ? "Punkt" : "Punkte"} · Leaderboard ${show ? "sichtbar" : "aus"}` : "Lokales Profil"}
+              {me ? `${me.points} ${me.points === 1 ? "Punkt" : "Punkte"} · Leaderboard ${show ? "sichtbar" : "aus"}` : "Account aktiv"}
             </p>
           </div>
         </div>
@@ -205,10 +140,10 @@ export default function MorePage() {
       <div className="overflow-hidden rounded-[18px] border border-line bg-surface">
         <SettingRow
           icon={<IconUser size={19} />}
-          title="Dein Name"
-          subtitle={me?.name || name || "Noch nicht gesetzt"}
-          actionLabel="Ändern"
-          onAction={() => setNameOpen(true)}
+          title="Account"
+          subtitle={admin ? "Sprecher" : "Schueler"}
+          actionLabel="Logout"
+          onAction={logout}
         />
         <SettingSwitch
           icon={<IconMedal size={19} />}
@@ -267,71 +202,36 @@ export default function MorePage() {
         <Button onClick={showOnboarding} variant="surface">Starten</Button>
       </Card>
 
-      <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Sprecher-Modus</h2>
+      <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Rolle</h2>
       {admin ? (
         <Card className="flex items-center justify-between">
           <div>
-            <p className="font-medium" style={{ color: "var(--signal-text)" }}>Sprecher-Modus aktiv</p>
+            <p className="font-medium" style={{ color: "var(--signal-text)" }}>Sprecherrechte aktiv</p>
             <p className="text-[12px] text-muted">Du kannst erstellen, bearbeiten & löschen.</p>
           </div>
-          <Button onClick={logout} variant="surface">Verlassen</Button>
+          <Link href="/admin">
+            <Button variant="surface">Verwaltung</Button>
+          </Link>
         </Card>
       ) : (
-        <Card className="flex items-center justify-between">
+        <Card className="flex items-center gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-[color:var(--surface-2)] text-muted">
-              <IconLock size={19} />
+              <IconUser size={19} />
             </span>
             <div>
-            <p className="font-medium">Sprecher-Modus</p>
-            <p className="text-[12px] text-muted">Mit Code freischalten.</p>
+            <p className="font-medium">Schueler-Account</p>
+            <p className="text-[12px] text-muted">Sprecherrechte werden direkt am Account vergeben.</p>
             </div>
           </div>
-          <Button onClick={() => setUnlockOpen(true)}>Freischalten</Button>
         </Card>
       )}
 
       <p className="mt-8 px-1 text-[12px] leading-relaxed text-muted">
-        Keine Anmeldung, kein Passwort, keine Mail. Deinen Namen gibst du nur dort ein, wo er gebraucht wird —
-        beim Eintragen oder Kommentieren. Das Leaderboard ist freiwillig und standardmäßig aus. Anonyme
-        Abstimmungen prüfen deinen Namen nur gegen die Stufenliste; deine Auswahl bleibt anonym.
+        Dein Account ist fest mit der Stufenliste verbunden. Abstimmungen sind dadurch auf eine Stimme pro Person
+        begrenzt; bei anonymen Votes bleibt nur die Auswahl anonymisiert gespeichert. Das Leaderboard ist freiwillig
+        und standardmäßig aus.
       </p>
-
-      <BottomSheet open={nameOpen} onClose={() => setNameOpen(false)} title="Dein Name">
-        <p className="mb-3 text-small text-muted">
-          Wird nur dort gezeigt, wo eine Funktion ihn braucht, zum Beispiel bei Eintragungen.
-        </p>
-        <Field label="Name">
-          <Input
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setLbErr("");
-              setLbSaved("");
-            }}
-            placeholder="Vor- und Nachname"
-            maxLength={40}
-          />
-        </Field>
-        {lbErr && <p className="mb-2 text-small text-danger">{lbErr}</p>}
-        <Button onClick={saveName} disabled={lbBusy} full>
-          {lbBusy ? "Speichern..." : "Speichern"}
-        </Button>
-      </BottomSheet>
-
-      <BottomSheet open={unlockOpen} onClose={() => setUnlockOpen(false)} title="Sprecher-Modus freischalten">
-        <Field label="Code" hint="Den Code bekommst du vom Sprecher-Team.">
-          <Input
-            type="password"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && doUnlock()}
-            placeholder="••••••"
-          />
-        </Field>
-        {err && <p className="mb-2 text-small text-danger">{err}</p>}
-        <Button onClick={doUnlock} full>Freischalten</Button>
-      </BottomSheet>
     </div>
   );
 }

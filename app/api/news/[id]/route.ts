@@ -12,7 +12,7 @@ const NEWS_STATUS = ["draft", "published", "hidden", "archived"] as const;
 const MAX_FEATURED = 3;
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
   const current = await db.prepare("SELECT * FROM news WHERE id = ? AND deleted_at IS NULL").get<any>(params.id);
@@ -78,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   await getDb().prepare("UPDATE news SET deleted_at = ? WHERE id = ?").run(nowIso(), params.id);
   return NextResponse.json({ ok: true });

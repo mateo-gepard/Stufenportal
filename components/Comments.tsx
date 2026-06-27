@@ -9,7 +9,6 @@ import { dateTime } from "@/lib/format";
 
 export default function Comments({ type, id }: { type: "event" | "news"; id: string }) {
   const [comments, setComments] = useState<Comment[]>([]);
-  const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -20,19 +19,13 @@ export default function Comments({ type, id }: { type: "event" | "news"; id: str
   }, [type, id]);
   useEffect(load, [load]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("sp_name");
-    if (saved) setName(saved);
-  }, []);
-
   async function send() {
     if (!body.trim()) return;
     setBusy(true);
     try {
-      if (name.trim()) localStorage.setItem("sp_name", name.trim());
       await api("/api/comments", {
         method: "POST",
-        body: { target_type: type, target_id: id, author_name: name, body },
+        body: { target_type: type, target_id: id, body },
       });
       setBody("");
       load();
@@ -70,7 +63,6 @@ export default function Comments({ type, id }: { type: "event" | "news"; id: str
       </div>
 
       <div className="mt-3 space-y-2">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dein Name (optional)" maxLength={40} />
         <div className="flex gap-2">
           <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Kommentar schreiben…" />
           <Button onClick={send} disabled={busy || !body.trim()}>

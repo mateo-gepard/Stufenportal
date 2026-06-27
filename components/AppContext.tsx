@@ -4,11 +4,23 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { api, getDeviceId } from "@/lib/client";
 import { applyColorTheme, isColorThemeKey, type ColorThemeKey } from "@/lib/themes";
 
+export interface AppUser {
+  id: string;
+  roster_key: string;
+  display_name: string;
+  sort_name: string;
+  role: "student" | "sprecher";
+  show_on_leaderboard: boolean;
+}
+
 interface AppState {
   admin: boolean;
+  speaker: boolean;
+  user: AppUser | null;
   ready: boolean;
   theme: "light" | "dark";
   colorTheme: ColorThemeKey;
+  login: (rosterKey: string, password: string) => Promise<void>;
   unlock: (code: string) => Promise<void>;
   logout: () => Promise<void>;
   toggleTheme: () => void;
@@ -25,6 +37,7 @@ export function useApp(): AppState {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState(false);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [ready, setReady] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [colorTheme, setColorThemeState] = useState<ColorThemeKey>("standard");
@@ -38,8 +51,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isColorThemeKey(savedColorTheme)) setColorThemeState(savedColorTheme);
     document.documentElement.setAttribute("data-theme", saved);
     applyColorTheme(document.documentElement, isColorThemeKey(savedColorTheme) ? savedColorTheme : "standard", saved);
-    (api("/api/admin/status") as Promise<{ admin: boolean }>)
-      .then((d) => setAdmin(d.admin))
+    (api("/api/auth/me") as Promise<{ user: AppUser | null; speaker: boolean }>)
+      .then((d) => {
+        setUser(d.user);
+        setAdmin(!!d.speaker);
+      })
       .catch(() => {})
       .finally(() => setReady(true));
 
@@ -48,13 +64,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const unlock = useCallback(async (code: string) => {
-    await api("/api/admin/unlock", { method: "POST", body: { code } });
-    setAdmin(true);
+  const login = useCallback(async (name: string, password: string) => {
+    const data = (await api("/api/auth/login", { method: "POST", body: { name, password } })) as {
+      user: AppUser;
+      speaker: boolean;
+    };
+    setUser(data.user);
+    setAdmin(!!data.speaker);
+  }, []);
+
+  const unlock = useCallback(async () => {
+    throw new Error("Der Sprecher-Code wurde durch Account-Rollen ersetzt.");
   }, []);
 
   const logout = useCallback(async () => {
-    await api("/api/admin/logout", { method: "POST" });
+    await api("/api/auth/logout", { method: "POST" });
+    setUser(null);
     setAdmin(false);
   }, []);
 
@@ -75,6 +100,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   return (
-    <Ctx.Provider value={{ admin, ready, theme, colorTheme, unlock, logout, toggleTheme, setColorTheme }}>{children}</Ctx.Provider>
+    <Ctx.Provider
+      value={{
+        admin,
+        speaker: admin,
+        user,
+        ready,
+        theme,
+        colorTheme,
+        login,
+        unlock,
+        logout,
+        toggleTheme,
+        setColorTheme,
+      }}
+    >
+      {children}
+    </Ctx.Provider>
   );
 }

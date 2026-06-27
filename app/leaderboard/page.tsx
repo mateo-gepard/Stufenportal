@@ -6,8 +6,9 @@ import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { LeaderboardRow, MemberRow } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
-import { Field, Input, Select } from "@/components/form";
+import { Field, Input } from "@/components/form";
 import { IconPlus } from "@/components/icons";
+import AccountMultiSelect from "@/components/AccountMultiSelect";
 
 export default function LeaderboardPage() {
   const { admin } = useApp();
@@ -145,7 +146,7 @@ function initials(name: string): string {
 
 function AwardSheet({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const [members, setMembers] = useState<MemberRow[]>([]);
-  const [device, setDevice] = useState("");
+  const [userIds, setUserIds] = useState<string[]>([]);
   const [points, setPoints] = useState("5");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -156,21 +157,21 @@ function AwardSheet({ open, onClose, onDone }: { open: boolean; onClose: () => v
     (api("/api/members") as Promise<{ members: MemberRow[] }>)
       .then((d) => {
         setMembers(d.members);
-        if (d.members[0]) setDevice(d.members[0].device_id);
       })
       .catch(() => setMembers([]));
   }, [open]);
 
   async function submit() {
-    if (!device) return setErr("Kein Mitglied wählbar.");
+    if (userIds.length === 0) return setErr("Mindestens einen Account auswählen.");
     const p = parseInt(points, 10);
     if (!p) return setErr("Punktzahl fehlt.");
     setBusy(true);
     setErr("");
     try {
-      await api("/api/points", { method: "POST", body: { device_id: device, points: p, reason } });
+      await api("/api/points", { method: "POST", body: { user_ids: userIds, points: p, reason } });
       setReason("");
       setPoints("5");
+      setUserIds([]);
       onDone();
     } catch (e) {
       setErr((e as Error).message);
@@ -183,18 +184,12 @@ function AwardSheet({ open, onClose, onDone }: { open: boolean; onClose: () => v
     <BottomSheet open={open} onClose={onClose} title="Punkte vergeben">
       {members.length === 0 ? (
         <p className="py-4 text-small text-muted">
-          Noch keine bekannten Mitglieder. Sobald sich jemand mit Namen einträgt oder kommentiert, erscheint er hier.
+          Noch keine Accounts gefunden. Fuehre zuerst das Account-Seeding aus.
         </p>
       ) : (
         <>
-          <Field label="An wen">
-            <Select value={device} onChange={(e) => setDevice(e.target.value)}>
-              {members.map((m) => (
-                <option key={m.device_id} value={m.device_id}>
-                  {m.name} · {m.points} Pkt
-                </option>
-              ))}
-            </Select>
+          <Field label="An wen" hint="Du kannst mehrere Accounts auswählen.">
+            <AccountMultiSelect accounts={members} selected={userIds} onChange={setUserIds} placeholder="Account suchen" />
           </Field>
           <Field label="Punkte" hint="Negativ zum Korrigieren möglich.">
             <Input type="number" value={points} onChange={(e) => setPoints(e.target.value)} />

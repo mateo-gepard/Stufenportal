@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useApp } from "@/components/AppContext";
 
 const tabs = [
   { href: "/", label: "Heute", icon: HomeIcon },
@@ -13,6 +14,8 @@ const tabs = [
 
 export default function BottomNav() {
   const path = usePathname();
+  const { user } = useApp();
+  if (!user) return null;
   return (
     <nav
       className="absolute bottom-0 left-0 right-0 z-40 border-t border-line bg-surface"

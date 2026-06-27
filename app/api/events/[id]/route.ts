@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, batch } from "@/lib/db";
-import { requireAdmin, deviceId } from "@/lib/auth";
+import { currentUser, requireAdmin, deviceId } from "@/lib/auth";
 import { nowIso, readJson, trimmed, str, oneOf } from "@/lib/util";
 import { parseMoneyGoalCents, parseMoneyGoalNote } from "@/lib/eventGoals";
 import type { EventDetail, EventStatus, SignupList } from "@/lib/types";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const STATUSES = ["idea", "planning", "active", "done", "cancelled"] as const;
 
-async function buildEventDetail(eventId: string, device: string | null): Promise<EventDetail | null> {
+async function buildEventDetail(eventId: string, device: string | null, userId: string | null): Promise<EventDetail | null> {
   const db = getDb();
   const e = await db
     .prepare("SELECT * FROM events WHERE id = ? AND deleted_at IS NULL")
@@ -47,9 +47,11 @@ async function buildEventDetail(eventId: string, device: string | null): Promise
       const slotViews = await Promise.all(
         slots.map(async (s) => {
           const signups = await db
-            .prepare("SELECT id,display_name,status,device_id FROM signups WHERE slot_id = ? ORDER BY created_at")
-            .all<{ id: string; display_name: string; status: "confirmed" | "waitlist"; device_id: string }>(s.id);
+            .prepare("SELECT id,display_name,status,device_id,user_id FROM signups WHERE slot_id = ? ORDER BY created_at")
+            .all<{ id: string; display_name: string; status: "confirmed" | "waitlist"; device_id: string; user_id: string | null }>(s.id);
           const confirmed = signups.filter((su) => su.status === "confirmed");
+          const isMine = (su: { device_id: string; user_id: string | null }) =>
+            (!!userId && su.user_id === userId) || (!!device && su.device_id === device);
           return {
             id: s.id,
             label: s.label,
@@ -57,12 +59,12 @@ async function buildEventDetail(eventId: string, device: string | null): Promise
             ord: s.ord,
             taken: confirmed.length,
             full: s.capacity != null && confirmed.length >= s.capacity,
-            mine: !!device && signups.some((su) => su.device_id === device),
+            mine: signups.some(isMine),
             signups: signups.map((su) => ({
               id: su.id,
               display_name: su.display_name,
               status: su.status,
-              mine: su.device_id === device,
+              mine: isMine(su),
             })),
           };
         })
@@ -89,13 +91,14 @@ async function buildEventDetail(eventId: string, device: string | null): Promise
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const detail = await buildEventDetail(params.id, deviceId(req));
+  const user = await currentUser();
+  const detail = await buildEventDetail(params.id, deviceId(req), user?.id ?? null);
   if (!detail) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   return NextResponse.json({ event: detail });
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   const db = getDb();
   const exists = await db.prepare("SELECT id FROM events WHERE id = ? AND deleted_at IS NULL").get(params.id);
@@ -141,7 +144,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
   const now = nowIso();
   // Soft-Delete kaskadiert auf Meilensteine & Listen (wiederherstellbar).

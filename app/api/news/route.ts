@@ -17,7 +17,7 @@ function mapNews(r: any): NewsItem {
 
 export async function GET() {
   const db = getDb();
-  const admin = isAdmin();
+  const admin = await isAdmin();
   const rows = admin
     ? await db.prepare("SELECT * FROM news WHERE deleted_at IS NULL ORDER BY COALESCE(published_at, created_at) DESC").all<any>()
     : await db
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
 
   const body = await readJson(req);

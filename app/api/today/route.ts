@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { deviceId, voterHash } from "@/lib/auth";
+import { currentUser, deviceId, voterHash } from "@/lib/auth";
 import { autoClose } from "@/lib/polls";
 import type { TodayDigest, NewsItem } from "@/lib/types";
 
@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const db = getDb();
   const device = deviceId(req);
+  const user = await currentUser();
   const now = Date.now();
 
   // 1. Beförderte News (max 3, abgelaufene featured_until fallen raus).
@@ -91,7 +92,12 @@ export async function GET(req: Request) {
     livePolls.map(async (p) => {
       const totalRow = await db.prepare("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?").get<{ n: number }>(p.id);
       let voted = false;
-      if (device) {
+      if (user) {
+        const col = p.anonymous ? "voter_hash" : "user_id";
+        const val = p.anonymous ? voterHash(p.poll_secret, `user:${user.id}`) : user.id;
+        voted = !!(await db.prepare(`SELECT 1 AS x FROM ballots WHERE poll_id = ? AND ${col} = ?`).get(p.id, val));
+      }
+      if (!voted && device) {
         const col = p.anonymous ? "voter_hash" : "device_id";
         const val = p.anonymous ? voterHash(p.poll_secret, device) : device;
         voted = !!(await db.prepare(`SELECT 1 AS x FROM ballots WHERE poll_id = ? AND ${col} = ?`).get(p.id, val));

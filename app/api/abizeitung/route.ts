@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { getDb } from "@/lib/db";
-import { deviceId } from "@/lib/auth";
+import { currentUser, deviceId } from "@/lib/auth";
 import { newId, nowIso, trimmed } from "@/lib/util";
-import { upsertMember } from "@/lib/members";
 import type { AbizeitungEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -22,6 +21,7 @@ const IMAGE_TYPES: Record<string, string> = {
 interface AbizeitungRow {
   id: string;
   device_id: string;
+  user_id: string | null;
   author_name: string;
   quote: string | null;
   quoted_name: string | null;
@@ -36,7 +36,7 @@ function formText(form: FormData, key: string, max: number): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
-function mapEntry(row: AbizeitungRow, device: string | null): AbizeitungEntry {
+function mapEntry(row: AbizeitungRow, userId: string | null, device: string | null): AbizeitungEntry {
   return {
     id: row.id,
     author_name: row.author_name,
@@ -46,33 +46,33 @@ function mapEntry(row: AbizeitungRow, device: string | null): AbizeitungEntry {
     image_url: row.image_path ? `/api/abizeitung/images/${row.id}` : null,
     image_name: row.image_name,
     created_at: row.created_at,
-    mine: !!device && row.device_id === device,
+    mine: (!!userId && row.user_id === userId) || (!!device && row.device_id === device),
   };
 }
 
 export async function GET(req: Request) {
   const currentDevice = deviceId(req);
+  const user = await currentUser();
   const rows = await getDb()
     .prepare(
-      `SELECT id, device_id, author_name, quote, quoted_name, caption, image_path, image_name, created_at
+      `SELECT id, device_id, user_id, author_name, quote, quoted_name, caption, image_path, image_name, created_at
        FROM abizeitung_entries
        WHERE deleted_at IS NULL
        ORDER BY created_at DESC`
     )
     .all<AbizeitungRow>();
 
-  return NextResponse.json({ entries: rows.map((row) => mapEntry(row, currentDevice)) });
+  return NextResponse.json({ entries: rows.map((row) => mapEntry(row, user?.id ?? null, currentDevice)) });
 }
 
 export async function POST(req: Request) {
-  const currentDevice = deviceId(req);
-  if (!currentDevice) return NextResponse.json({ error: "Keine Geräte-ID." }, { status: 400 });
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Bitte anmelden." }, { status: 401 });
 
   const form = await req.formData();
   const quote = formText(form, "quote", 600);
   const quotedName = formText(form, "quoted_name", 80);
   const caption = formText(form, "caption", 160);
-  const authorName = formText(form, "author_name", 40) || "Anonym";
   const image = form.get("image");
 
   const hasImage = image instanceof File && image.size > 0;
@@ -104,13 +104,14 @@ export async function POST(req: Request) {
   await getDb()
     .prepare(
       `INSERT INTO abizeitung_entries
-       (id, device_id, author_name, quote, quoted_name, caption, image_path, image_mime, image_name, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`
+       (id, device_id, user_id, author_name, quote, quoted_name, caption, image_path, image_mime, image_name, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
     )
     .run(
       id,
-      currentDevice,
-      authorName,
+      `user:${user.id}`,
+      user.id,
+      user.display_name,
       quote || null,
       quotedName || null,
       caption || null,
@@ -120,6 +121,5 @@ export async function POST(req: Request) {
       nowIso()
     );
 
-  await upsertMember(currentDevice, authorName);
   return NextResponse.json({ id }, { status: 201 });
 }

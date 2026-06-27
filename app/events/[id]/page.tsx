@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
-import type { EventDetail, Slot } from "@/lib/types";
+import type { EventDetail, MemberRow, Milestone, Slot } from "@/lib/types";
 import {
   Card,
   MilestoneBar,
@@ -20,6 +20,7 @@ import { Field, Input, Textarea, Select } from "@/components/form";
 import { IconCheck, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTarget, IconTrash, IconUser } from "@/components/icons";
 import { centsFromEuroInput, euroInputValue, money, relativeDay } from "@/lib/format";
 import Comments from "@/components/Comments";
+import AccountMultiSelect from "@/components/AccountMultiSelect";
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
   const { admin } = useApp();
@@ -29,6 +30,9 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const [adminSheet, setAdminSheet] = useState(false);
   const [editSheet, setEditSheet] = useState(false);
   const [joinSlot, setJoinSlot] = useState<Slot | null>(null);
+  const [accounts, setAccounts] = useState<MemberRow[]>([]);
+  const [assignFor, setAssignFor] = useState<Milestone | null>(null);
+  const [assignIds, setAssignIds] = useState<string[]>([]);
   const [newMs, setNewMs] = useState("");
 
   const load = useCallback(() => {
@@ -37,6 +41,22 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       .catch(() => setNotFound(true));
   }, [params.id]);
   useEffect(load, [load]);
+  useEffect(() => {
+    if (!admin) return;
+    (api("/api/members") as Promise<{ members: MemberRow[] }>)
+      .then((data) => setAccounts(data.members))
+      .catch(() => setAccounts([]));
+  }, [admin]);
+
+  function idsForAssignee(value: string | null): string[] {
+    const names = new Set((value || "").split(",").map((name) => name.trim()).filter(Boolean));
+    return accounts.filter((account) => names.has(account.name)).map((account) => account.user_id);
+  }
+
+  function openAssign(milestone: Milestone) {
+    setAssignFor(milestone);
+    setAssignIds(idsForAssignee(milestone.assignee));
+  }
 
   async function toggleMs(mid: string, done: boolean) {
     setEv((prev) =>
@@ -55,6 +75,16 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     if (!newMs.trim()) return;
     await api(`/api/events/${params.id}/milestones`, { method: "POST", body: { title: newMs.trim() } });
     setNewMs("");
+    load();
+  }
+
+  async function saveAssignment() {
+    if (!assignFor) return;
+    const byId = new Map(accounts.map((account) => [account.user_id, account.name]));
+    const assignee = assignIds.map((id) => byId.get(id)).filter(Boolean).join(", ");
+    await api(`/api/milestones/${assignFor.id}`, { method: "PATCH", body: { assignee } });
+    setAssignFor(null);
+    setAssignIds([]);
     load();
   }
 
@@ -165,6 +195,16 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                   </p>
                 )}
               </div>
+              {admin && (
+                <button
+                  type="button"
+                  onClick={() => openAssign(m)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border border-line bg-surface text-muted"
+                  aria-label="Aufgabe zuordnen"
+                >
+                  <IconUser size={16} />
+                </button>
+              )}
             </div>
           ))}
           {ev.milestones.length === 0 && <p className="text-small text-muted">Keine Meilensteine.</p>}
@@ -237,6 +277,32 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
           load();
         }}
       />
+
+      <BottomSheet open={!!assignFor} onClose={() => setAssignFor(null)} title="Aufgabe zuordnen">
+        {assignFor && (
+          <div className="space-y-3">
+            <div className="rounded-[16px] bg-[color:var(--soft)] px-3 py-2.5">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted">Aufgabe</p>
+              <p className="font-display text-[20px] font-black leading-tight">{assignFor.title}</p>
+            </div>
+            <AccountMultiSelect
+              accounts={accounts}
+              selected={assignIds}
+              onChange={setAssignIds}
+              placeholder="Namen suchen"
+              emptyText="Keine Accounts gefunden."
+            />
+            <div className="flex gap-2">
+              <Button onClick={() => setAssignIds([])} variant="surface">
+                Leeren
+              </Button>
+              <Button onClick={saveAssignment} full>
+                Zuordnung speichern
+              </Button>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }
@@ -305,18 +371,13 @@ function statusLabel(status: EventDetail["status"]): string {
 }
 
 function JoinSheet({ slot, onClose, onJoined }: { slot: Slot | null; onClose: () => void; onJoined: () => void }) {
-  const [name, setName] = useState("");
   const [err, setErr] = useState("");
-  useEffect(() => {
-    if (slot) setName(localStorage.getItem("sp_name") || "");
-  }, [slot]);
 
   async function join() {
     if (!slot) return;
     setErr("");
     try {
-      if (name.trim()) localStorage.setItem("sp_name", name.trim());
-      await api(`/api/slots/${slot.id}/signups`, { method: "POST", body: { display_name: name } });
+      await api(`/api/slots/${slot.id}/signups`, { method: "POST" });
       onJoined();
     } catch (e) {
       setErr((e as Error).message);
@@ -325,9 +386,9 @@ function JoinSheet({ slot, onClose, onJoined }: { slot: Slot | null; onClose: ()
 
   return (
     <BottomSheet open={!!slot} onClose={onClose} title={slot?.full ? "Auf die Warteliste" : "Eintragen"}>
-      <Field label="Dein Name (optional)" hint="Damit die Liste zeigt, wer dabei ist. Du kannst auch anonym bleiben.">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Anonym" maxLength={40} />
-      </Field>
+      <p className="mb-3 text-small text-muted">
+        Du wirst mit deinem Accountnamen in die Liste eingetragen.
+      </p>
       {err && <p className="mb-2 text-small text-danger">{err}</p>}
       <Button onClick={join} full>
         {slot?.full ? "Auf Warteliste setzen" : "Eintragen"}

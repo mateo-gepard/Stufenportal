@@ -60,7 +60,8 @@ async function ballotCount(pollId: string): Promise<number> {
 export async function buildPollDetail(
   poll: PollRow,
   device: string | null,
-  isAdmin: boolean
+  isAdmin: boolean,
+  userId: string | null = null
 ): Promise<PollDetail> {
   const db = getDb();
   const p = await autoClose(poll);
@@ -72,7 +73,16 @@ export async function buildPollDetail(
 
   // Hat dieses Gerät bereits abgestimmt?
   let myBallotId: string | null = null;
-  if (device) {
+  if (userId) {
+    const key = p.anonymous
+      ? { col: "voter_hash", val: voterHash(p.poll_secret, `user:${userId}`) }
+      : { col: "user_id", val: userId };
+    const row = await db
+      .prepare(`SELECT id FROM ballots WHERE poll_id = ? AND ${key.col} = ?`)
+      .get<{ id: string }>(p.id, key.val);
+    myBallotId = row?.id ?? null;
+  }
+  if (!myBallotId && device) {
     const key = p.anonymous
       ? { col: "voter_hash", val: voterHash(p.poll_secret, device) }
       : { col: "device_id", val: device };

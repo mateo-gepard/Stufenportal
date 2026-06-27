@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const db = getDb();
-  const admin = isAdmin();
+  const admin = await isAdmin();
   const rows = await db
     .prepare(
       "SELECT id,kind,amount,description,category,occurred_at,paid_by FROM ledger WHERE deleted_at IS NULL ORDER BY occurred_at DESC, created_at DESC"
@@ -46,7 +46,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
 
   const body = await readJson(req);

@@ -84,6 +84,29 @@ export async function tx<T>(fn: (t: Transaction) => Promise<T>): Promise<T> {
 async function migrate(): Promise<void> {
   // executeMultiple führt mehrere durch ; getrennte Statements aus (ohne Args).
   await raw().executeMultiple(`
+    CREATE TABLE IF NOT EXISTS users (
+      id                   TEXT PRIMARY KEY,
+      roster_key           TEXT NOT NULL UNIQUE,
+      display_name         TEXT NOT NULL,
+      sort_name            TEXT NOT NULL,
+      password_hash        TEXT NOT NULL,
+      role                 TEXT NOT NULL DEFAULT 'student',
+      show_on_leaderboard  INTEGER NOT NULL DEFAULT 0,
+      created_at           TEXT NOT NULL,
+      updated_at           TEXT NOT NULL,
+      last_login_at        TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_users_sort_name ON users(sort_name);
+
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      session_hash TEXT PRIMARY KEY,
+      user_id      TEXT NOT NULL,
+      created_at   TEXT NOT NULL,
+      expires_at   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_expiry ON user_sessions(expires_at);
+
     CREATE TABLE IF NOT EXISTS events (
       id          TEXT PRIMARY KEY,
       title       TEXT NOT NULL,
@@ -131,6 +154,7 @@ async function migrate(): Promise<void> {
       id           TEXT PRIMARY KEY,
       slot_id      TEXT NOT NULL,
       device_id    TEXT NOT NULL,
+      user_id      TEXT,
       display_name TEXT NOT NULL DEFAULT 'Anonym',
       status       TEXT NOT NULL DEFAULT 'confirmed',
       created_at   TEXT NOT NULL,
@@ -180,6 +204,7 @@ async function migrate(): Promise<void> {
       id         TEXT PRIMARY KEY,
       poll_id    TEXT NOT NULL,
       device_id  TEXT,
+      user_id    TEXT,
       voter_hash TEXT,
       created_at TEXT NOT NULL
     );
@@ -241,6 +266,7 @@ async function migrate(): Promise<void> {
       target_type TEXT NOT NULL,
       target_id   TEXT NOT NULL,
       device_id   TEXT NOT NULL,
+      user_id     TEXT,
       author_name TEXT NOT NULL DEFAULT 'Anonym',
       body        TEXT NOT NULL,
       created_at  TEXT NOT NULL,
@@ -250,6 +276,7 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS abizeitung_entries (
       id             TEXT PRIMARY KEY,
       device_id      TEXT NOT NULL,
+      user_id        TEXT,
       author_name    TEXT NOT NULL DEFAULT 'Anonym',
       quote          TEXT,
       quoted_name    TEXT,
@@ -280,6 +307,7 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS point_events (
       id         TEXT PRIMARY KEY,
       device_id  TEXT NOT NULL,
+      user_id    TEXT,
       points     INTEGER NOT NULL,
       reason     TEXT NOT NULL DEFAULT '',
       source     TEXT NOT NULL DEFAULT 'sprecher',
@@ -289,10 +317,22 @@ async function migrate(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_points_recipient ON point_events(device_id);
   `);
 
+  await addColumnIfMissing("users", "last_login_at", "TEXT");
+  await addColumnIfMissing("signups", "user_id", "TEXT");
+  await addColumnIfMissing("ballots", "user_id", "TEXT");
+  await addColumnIfMissing("comments", "user_id", "TEXT");
+  await addColumnIfMissing("abizeitung_entries", "user_id", "TEXT");
+  await addColumnIfMissing("point_events", "user_id", "TEXT");
   await addColumnIfMissing("polls", "rank_limit", "INTEGER");
   await addColumnIfMissing("polls", "ranked_veto_enabled", "INTEGER NOT NULL DEFAULT 0");
   await addColumnIfMissing("events", "money_goal_cents", "INTEGER");
   await addColumnIfMissing("events", "money_goal_note", "TEXT");
+
+  await raw().execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_signup_user ON signups(slot_id, user_id) WHERE user_id IS NOT NULL");
+  await raw().execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_ballot_user ON ballots(poll_id, user_id) WHERE user_id IS NOT NULL");
+  await raw().execute("CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id)");
+  await raw().execute("CREATE INDEX IF NOT EXISTS idx_abizeitung_user ON abizeitung_entries(user_id)");
+  await raw().execute("CREATE INDEX IF NOT EXISTS idx_points_user ON point_events(user_id)");
 }
 
 async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {

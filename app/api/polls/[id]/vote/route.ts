@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDb, tx } from "@/lib/db";
-import { deviceId, voterHash, isAdmin } from "@/lib/auth";
-import { newId, nowIso, readJson, trimmed } from "@/lib/util";
+import { currentUser, deviceId, voterHash, isAdmin } from "@/lib/auth";
+import { newId, nowIso, readJson } from "@/lib/util";
 import { autoClose, buildPollDetail, normalizeRankLimit, rankedMaxPriorities } from "@/lib/polls";
-import { findRosterEntryForName } from "@/lib/stufenliste";
 
 export const runtime = "nodejs";
 
@@ -17,8 +16,9 @@ class VoteError extends Error {
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Bitte anmelden." }, { status: 401 });
   const device = deviceId(req);
-  if (!device) return NextResponse.json({ error: "Keine Geräte-ID." }, { status: 400 });
 
   const db = getDb();
   let poll = await db.prepare("SELECT * FROM polls WHERE id = ? AND deleted_at IS NULL").get<any>(params.id);
@@ -77,33 +77,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const ballotId = newId();
   const anon = !!poll.anonymous;
-  const voterName = trimmed(body.voter_name);
   let submitted = false;
 
   try {
     await tx(async (t) => {
-      let rosterEntryId: string | null = null;
-      if (anon) {
-        const match = await findRosterEntryForName(t, poll.id, voterName);
-        if (!match.ok) {
-          if (match.reason === "missing") throw new VoteError("Bitte gib deinen Namen zur Prüfung ein.");
-          if (match.reason === "ambiguous") {
-            throw new VoteError("Name ist nicht eindeutig. Bitte Vor- und Nachname eingeben.");
-          }
-          throw new VoteError("Name ist nicht auf der Stufenliste.");
-        }
-        if (match.used) throw new VoteError("Mit diesem Namen wurde schon abgestimmt.", 409);
-        rosterEntryId = match.entryId;
-      }
-
       const now = nowIso();
       await t.execute({
-        sql: "INSERT INTO ballots (id,poll_id,device_id,voter_hash,created_at) VALUES (?,?,?,?,?)",
+        sql: "INSERT INTO ballots (id,poll_id,device_id,user_id,voter_hash,created_at) VALUES (?,?,?,?,?,?)",
         args: [
           ballotId,
           poll.id,
-          anon ? null : device,
-          anon && rosterEntryId ? voterHash(poll.poll_secret, `roster:${rosterEntryId}`) : null,
+          null,
+          anon ? null : user.id,
+          anon ? voterHash(poll.poll_secret, `user:${user.id}`) : null,
           now,
         ],
       });
@@ -113,14 +99,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           sql: "INSERT INTO vote_items (id,ballot_id,option_id,rank) VALUES (?,?,?,?)",
           args: [newId(), ballotId, it.option_id, it.rank],
         });
-      }
-
-      if (anon && rosterEntryId) {
-        const update = await t.execute({
-          sql: "UPDATE poll_roster_entries SET used_at = ?, ballot_id = ? WHERE id = ? AND poll_id = ? AND used_at IS NULL",
-          args: [now, ballotId, rosterEntryId, poll.id],
-        });
-        if (update.rowsAffected === 0) throw new VoteError("Mit diesem Namen wurde schon abgestimmt.", 409);
       }
     });
     submitted = true;
@@ -135,6 +113,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     throw err;
   }
 
-  const detail = await buildPollDetail(poll, device, isAdmin());
+  const detail = await buildPollDetail(poll, device, await isAdmin(), user.id);
   return NextResponse.json({ poll: { ...detail, voted: submitted, my_choice: items } }, { status: 201 });
 }

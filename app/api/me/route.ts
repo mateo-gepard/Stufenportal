@@ -1,59 +1,40 @@
 import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { deviceId } from "@/lib/auth";
-import { nowIso, readJson, trimmed } from "@/lib/util";
-import { pointsFor } from "@/lib/members";
+import { pointsForUser } from "@/lib/members";
+import { nowIso, readJson } from "@/lib/util";
 import type { Me } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
-  const device = deviceId(req);
-  const empty: Me = { name: "", show_on_leaderboard: false, points: 0, history: [] };
-  if (!device) return NextResponse.json(empty);
+export async function GET() {
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Bitte anmelden." }, { status: 401 });
 
-  const db = getDb();
-  const m = await db
-    .prepare("SELECT name, show_on_leaderboard FROM members WHERE device_id = ?")
-    .get<{ name: string; show_on_leaderboard: number }>(device);
-  const history = await db
+  const history = await getDb()
     .prepare(
-      "SELECT id, points, reason, created_at FROM point_events WHERE device_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 20"
+      "SELECT id, points, reason, created_at FROM point_events WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 20"
     )
-    .all<Me["history"][number]>(device);
+    .all<Me["history"][number]>(user.id);
 
   return NextResponse.json({
-    name: m?.name ?? "",
-    show_on_leaderboard: !!m?.show_on_leaderboard,
-    points: await pointsFor(device),
+    name: user.display_name,
+    show_on_leaderboard: user.show_on_leaderboard,
+    points: await pointsForUser(user.id),
     history,
   } satisfies Me);
 }
 
 export async function POST(req: Request) {
-  const device = deviceId(req);
-  if (!device) return NextResponse.json({ error: "Keine Geräte-ID." }, { status: 400 });
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Bitte anmelden." }, { status: 401 });
 
   const body = await readJson(req);
-  const name = trimmed(body.name).slice(0, 40);
   const show = body.show_on_leaderboard ? 1 : 0;
-
-  const db = getDb();
-  const now = nowIso();
-  if (!name) {
-    if (show) return NextResponse.json({ error: "Name fehlt." }, { status: 400 });
-    await db.prepare("UPDATE members SET show_on_leaderboard = 0, updated_at = ? WHERE device_id = ?").run(now, device);
-    return NextResponse.json({ ok: true });
-  }
-
-  await db
-    .prepare(
-      `INSERT INTO members (device_id, name, show_on_leaderboard, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(device_id) DO UPDATE SET name = excluded.name, show_on_leaderboard = excluded.show_on_leaderboard, updated_at = excluded.updated_at`
-    )
-    .run(device, name, show, now, now);
+  await getDb()
+    .prepare("UPDATE users SET show_on_leaderboard = ?, updated_at = ? WHERE id = ?")
+    .run(show, nowIso(), user.id);
 
   return NextResponse.json({ ok: true });
 }

@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
 
   const rows = await getDb()
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const forbidden = requireAdmin();
+  const forbidden = await requireAdmin();
   if (forbidden) return forbidden;
 
   const body = await readJson(req);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, getDeviceId } from "@/lib/client";
+import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { AbizeitungEntry } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
@@ -133,7 +133,6 @@ function SubmitSheet({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [authorName, setAuthorName] = useState("");
   const [quote, setQuote] = useState("");
   const [quotedName, setQuotedName] = useState("");
   const [caption, setCaption] = useState("");
@@ -145,7 +144,6 @@ function SubmitSheet({
 
   useEffect(() => {
     if (!open) return;
-    setAuthorName(localStorage.getItem("sp_name") || "");
     setErr("");
   }, [open]);
 
@@ -167,7 +165,6 @@ function SubmitSheet({
     setErr("");
     try {
       const form = new FormData();
-      form.append("author_name", authorName.trim());
       form.append("quote", quote.trim());
       form.append("quoted_name", quotedName.trim());
       form.append("caption", caption.trim());
@@ -175,13 +172,11 @@ function SubmitSheet({
 
       const res = await fetch("/api/abizeitung", {
         method: "POST",
-        headers: { "x-device-id": getDeviceId() },
         body: form,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error || `Fehler ${res.status}`);
 
-      if (authorName.trim()) localStorage.setItem("sp_name", authorName.trim());
       setQuote("");
       setQuotedName("");
       setCaption("");
@@ -197,9 +192,6 @@ function SubmitSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Für die Abizeitung">
-      <Field label="Dein Name (optional)">
-        <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Anonym" maxLength={40} />
-      </Field>
       <Field label="Zitat" hint="Optional, wenn du nur ein Bild hochlädst.">
         <Textarea value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="Was soll in die Abizeitung?" maxLength={600} />
       </Field>
