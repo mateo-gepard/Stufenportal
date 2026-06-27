@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     .prepare("SELECT * FROM polls WHERE deleted_at IS NULL AND status = 'open' ORDER BY (closes_at IS NULL), closes_at ASC")
     .all<any>();
 
-  // 2. Dringendes: Polls/Events mit Frist in den nächsten 3 Tagen.
+  // 2. Dringendes: Dringende News plus Polls/Events mit Frist in den nächsten 3 Tagen.
   const soon = now + 3 * 864e5;
   const urgent: TodayDigest["urgent"] = [];
   livePolls.forEach((p) => {
@@ -40,6 +40,18 @@ export async function GET(req: Request) {
       urgent.push({ type: "poll", id: p.id, title: p.question, closes_at: p.closes_at });
     }
   });
+  const urgentNews = await db
+    .prepare(
+      `SELECT id, title, COALESCE(published_at, created_at) AS published_at
+       FROM news
+       WHERE deleted_at IS NULL AND status = 'published' AND priority = 'dringend'
+       ORDER BY COALESCE(published_at, created_at) DESC
+       LIMIT 5`
+    )
+    .all<{ id: string; title: string; published_at: string }>();
+  urgentNews.forEach((n) =>
+    urgent.push({ type: "news", id: n.id, title: n.title, closes_at: n.published_at || new Date(now).toISOString() })
+  );
   const soonEvents = await db
     .prepare(
       `SELECT id, title, start_at FROM events
@@ -49,7 +61,11 @@ export async function GET(req: Request) {
     )
     .all<any>(new Date(soon).toISOString(), new Date(now).toISOString());
   soonEvents.forEach((e) => urgent.push({ type: "event", id: e.id, title: e.title, closes_at: e.start_at }));
-  urgent.sort((a, b) => new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime());
+  urgent.sort((a, b) => {
+    if (a.type === "news" && b.type !== "news") return -1;
+    if (a.type !== "news" && b.type === "news") return 1;
+    return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
+  });
 
   // 3. Kommt: kommende Events mit Meilenstein-Fortschritt.
   const upcoming = await db

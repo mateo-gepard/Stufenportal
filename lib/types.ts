@@ -166,7 +166,7 @@ export interface MemberRow {
 
 export interface TodayDigest {
   featuredNews: NewsItem[];
-  urgent: { type: "poll" | "event"; id: string; title: string; closes_at: string }[];
+  urgent: { type: "poll" | "event" | "news"; id: string; title: string; closes_at: string }[];
   upcoming: EventSummary[];
   openPolls: {
     id: string;

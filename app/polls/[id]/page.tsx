@@ -297,20 +297,21 @@ function LeaderResultCard({ poll, winner }: { poll: PollDetail; winner: PollResu
       ? `${winner.value} Pkt${poll.ranked_veto_enabled ? ` · ${vetoLabel(winner.veto_count ?? 0)}` : ""}`
       : `${winner.value} Stimmen`;
   return (
-    <div className="relative mb-1 min-h-[132px] overflow-hidden rounded-[20px] bg-[color:var(--dark)] p-[22px] text-white">
-      <div className="sp-half absolute bottom-0 right-0 top-0 w-[38%] text-white/18" aria-hidden />
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="mb-[26px] text-[11px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--pop)]">
+    <div className="relative mb-1 min-h-[146px] overflow-hidden rounded-[20px] bg-[color:var(--dark)] p-[22px] pb-[46px] text-white">
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--pop)]">
             Führt aktuell
           </p>
-          <h3 className="truncate font-display text-[28px] font-black leading-none">{winner.label}</h3>
         </div>
-        <div className="shrink-0 text-right">
+        <div className="shrink-0 rounded-[14px] bg-white/8 px-3 py-2 text-right">
           <p className="tabular font-display text-[34px] font-black leading-none text-[color:var(--pop)]">{winner.pct}%</p>
           <p className="tabular text-[12px] font-extrabold text-white/70">{metric}</p>
         </div>
       </div>
+      <h3 className="relative mt-[24px] break-words font-display text-[28px] font-black leading-[1.04]">
+        {winner.label}
+      </h3>
       <div className="absolute bottom-[20px] left-[22px] right-[22px] flex h-[10px] gap-1.5" aria-hidden>
         <span className="rounded-full bg-[color:var(--accent)]" style={{ flex: Math.max(12, winner.pct) }} />
         <span className="rounded-full bg-[color:var(--dark2)]" style={{ flex: Math.max(12, 100 - winner.pct) }} />
@@ -328,10 +329,10 @@ function ResultRow({ poll, row, rank }: { poll: PollDetail; row: PollResultRow; 
       : `${row.value} Stimmen`;
   return (
     <div className="pb-[5px]">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <span
-            className="tabular flex h-[27px] w-[27px] shrink-0 items-center justify-center rounded-[9px] text-[14px] font-extrabold"
+            className="tabular mt-0.5 flex h-[27px] w-[27px] shrink-0 items-center justify-center rounded-[9px] text-[14px] font-extrabold"
             style={{
               background: isFirst ? "var(--accent)" : "var(--surface-2)",
               color: isFirst ? "white" : "var(--muted)",
@@ -339,9 +340,13 @@ function ResultRow({ poll, row, rank }: { poll: PollDetail; row: PollResultRow; 
           >
             {rank}
           </span>
-          <span className="truncate font-display text-[19px] font-black leading-tight">{row.label}</span>
+          <span className="min-w-0 flex-1 break-words font-display text-[19px] font-black leading-[1.12]">
+            {row.label}
+          </span>
         </div>
-        <span className="tabular shrink-0 text-[15px] font-extrabold text-text">{metric}</span>
+        <span className="tabular max-w-[38%] shrink-0 pt-1 text-right text-[15px] font-extrabold leading-tight text-text">
+          {metric}
+        </span>
       </div>
       <div className="h-[10px] overflow-hidden rounded-full bg-[color:var(--surface-2)]">
         <div
@@ -401,16 +406,18 @@ function OptionRow({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       aria-label={`${control === "radio" ? "Option" : "Auswahl"} ${label}`}
-      className="flex min-h-[70px] w-full items-center gap-4 rounded-[16px] border bg-surface px-[18px] text-left transition-colors active:scale-[0.995] disabled:cursor-default disabled:opacity-100"
+      className="flex min-h-[70px] w-full items-start gap-4 rounded-[16px] border bg-surface px-[18px] py-[16px] text-left transition-colors active:scale-[0.995] disabled:cursor-default disabled:opacity-100"
       style={{ borderColor: selected ? "var(--signal)" : "var(--border)" }}
     >
       <span
-        className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[9px] border-2"
+        className="mt-0.5 flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[9px] border-2"
         style={{ borderColor: selected ? "var(--signal)" : "var(--border)", background: selected ? "var(--signal)" : "transparent" }}
       >
         {selected && <IconCheck size={13} strokeWidth={3.2} style={{ color: "white" }} />}
       </span>
-      <span className="min-w-0 truncate font-display text-[20px] font-black">{label}</span>
+      <span className="min-w-0 flex-1 break-words font-display text-[20px] font-black leading-[1.15]">
+        {label}
+      </span>
     </button>
   );
 }
@@ -444,21 +451,21 @@ function RankedPicker({
       {ranking.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">
           {ranking.map((id, i) => (
-            <div key={id} className="flex items-center gap-3 rounded-xl border px-3.5 py-3" style={{ borderColor: "var(--signal)" }}>
+            <div key={id} className="flex items-start gap-3 rounded-xl border px-3.5 py-3" style={{ borderColor: "var(--signal)" }}>
               <span
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-white"
+                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-white"
                 style={{ background: "var(--signal)" }}
               >
                 {i + 1}
               </span>
-            <span className="flex-1 text-[15px]">{labelOf(id)}</span>
+              <span className="min-w-0 flex-1 break-words text-[15px] leading-snug">{labelOf(id)}</span>
               <button
                 type="button"
                 onClick={() => {
                   setRanking(ranking.filter((x) => x !== id));
                   setVeto("");
                 }}
-                className="text-[12px] text-muted"
+                className="shrink-0 pt-0.5 text-[12px] text-muted"
               >
                 entfernen
               </button>
@@ -482,13 +489,13 @@ function RankedPicker({
               }
             }}
             disabled={limitReached && !vetoEnabled}
-            className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border bg-surface px-3.5 text-left disabled:opacity-55"
+            className="flex min-h-[48px] w-full items-start gap-3 rounded-xl border bg-surface px-3.5 py-3 text-left disabled:opacity-55"
             style={{
               borderColor: veto === o.id ? "var(--danger)" : "var(--border)",
             }}
           >
             <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-muted"
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-muted"
               style={{
                 borderColor: veto === o.id ? "var(--danger)" : "var(--border)",
                 background: veto === o.id ? "var(--danger)" : "transparent",
@@ -497,9 +504,9 @@ function RankedPicker({
             >
               {veto === o.id ? <IconCheck size={13} strokeWidth={3.2} /> : <IconPlus size={15} />}
             </span>
-            <span className="flex-1 text-[15px]">{o.label}</span>
+            <span className="min-w-0 flex-1 break-words text-[15px] leading-snug">{o.label}</span>
             {limitReached && (
-              <span className="rounded-full bg-[color:var(--surface-2)] px-2 py-1 text-[11px] text-muted">
+              <span className="shrink-0 rounded-full bg-[color:var(--surface-2)] px-2 py-1 text-[11px] text-muted">
                 {vetoEnabled ? (veto === o.id ? "Veto gesetzt" : "als Veto") : "nicht gewählt"}
               </span>
             )}

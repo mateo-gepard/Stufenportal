@@ -10,21 +10,21 @@ interface StufenPerson {
 // Server-seitige Stufenliste fuer anonyme Abstimmungen. Die Liste wird beim
 // Erstellen einer anonymen Abstimmung in eine eigene Poll-Liste kopiert.
 const STUFENLISTE: StufenPerson[] = [
-  { last: "Sajramovic", first: "Melika" },
+  { last: "Bajramovic", first: "Melika", aliases: ["Sajramovic Melika"] },
   { last: "Basöz", first: "Baris" },
-  { last: "Bastan", first: "Jla" },
+  { last: "Bastian", first: "Julia", aliases: ["Bastan Julia"] },
   { last: "Bauer", first: "Victor" },
-  { last: "Beligny", first: "Esthe" },
+  { last: "Beligny", first: "Esther" },
   { last: "Bielinski", first: "Theo" },
   { last: "Bitter", first: "Mina" },
   { last: "Boege", first: "Mio" },
-  { last: "Bähme" },
-  { last: "Boekel", first: "E" },
+  { last: "Böhme", first: "Livia", aliases: ["Boehme Livia", "Bähme"] },
+  { last: "Boekel", first: "Emilia" },
   { last: "Brückner", first: "Bastian" },
-  { last: "Castiglia", first: "S" },
+  { last: "Castiglia", first: "Samuele" },
   { last: "Crusius", first: "Maximilian" },
-  { last: "Damm", first: "Soni" },
-  { last: "Cker", first: "Laur" },
+  { last: "Damm", first: "Sonia" },
+  { last: "Decker", first: "Laura" },
   { last: "El Imam", first: "Mohamed" },
   { last: "Engel", first: "Mathilda" },
   { last: "Forkel", first: "Ebba" },
@@ -32,72 +32,83 @@ const STUFENLISTE: StufenPerson[] = [
   { last: "Fröschl", first: "Annika" },
   { last: "Gallitz", first: "Leon" },
   { last: "Geishauser", first: "Simon" },
-  { last: "Genc", first: "Ali" },
+  { last: "Genc", first: "Ali", aliases: ["Genc All", "All Genc"] },
   { last: "Hahn", first: "Mona" },
   { last: "Hartmann", first: "Tobias" },
-  { last: "Achori", first: "Ue" },
+  { last: "Hashemi", first: "Shams" },
+  { last: "Hattig", first: "Carlotta" },
   { last: "Heinrichs", first: "Ada" },
-  { last: "Herschbach", first: "Jas" },
+  { last: "Herschbach", first: "Jasper" },
   { last: "Heske", first: "Clara" },
-  { last: "Heyde" },
+  { last: "Heydenreich", first: "Lorenz" },
   { last: "Hippert", first: "Jakob" },
   { last: "Kamber", first: "Ana-Marija" },
   { last: "Kern", first: "Greta" },
   { last: "Kessler", first: "Yannick" },
-  { last: "Kzzinger", first: "Lucia" },
-  { last: "Kriegel", first: "Sver" },
+  { last: "Kitzinger", first: "Lucia" },
+  { last: "Kriegel", first: "Sven" },
   { last: "Krück", first: "Lily" },
-  { last: "Kubisa", first: "Maltis" },
+  { last: "Kubisa", first: "Mattis", aliases: ["Kubisa Maltis"] },
   { last: "Lam", first: "Max" },
-  { last: "Landerer", first: "Ke" },
+  { last: "Landerer", first: "Keanu" },
   { last: "Lin", first: "Kai" },
   { last: "Lindner", first: "Marlene" },
-  { last: "Lu", first: "Christian" },
-  { last: "Lusskandl", first: "Em" },
+  { last: "Liu", first: "Christian" },
+  { last: "Lusskandi", first: "Emma", aliases: ["Lusskandl Emma"] },
   { last: "Mahmood", first: "Nerjes" },
   { last: "Maier", first: "Christophe" },
-  { last: "Dlalduz", first: "Tmilde" },
-  { last: "Issinger", first: "Corb" },
-  { last: "Ru", first: "David" },
-  { last: "Neagos", first: "Iulia", aliases: ["Julia Neagos"] },
+  { last: "Mamaladze", first: "Mateo" },
+  { last: "Massinger", first: "Corbinian", aliases: ["Issinger Corbinian"] },
+  { last: "Militaru", first: "David" },
+  { last: "Neagos", first: "Iulia", aliases: ["Julia Neagos", "Lulia Neagos", "Neagos Lulia"] },
   { last: "Nickel", first: "Tom" },
-  { last: "Oppitz", first: "Nikola" },
-  { last: "Ostmann", first: "Jonath" },
+  { last: "Oppitz", first: "Nikolas" },
+  { last: "Ostmann", first: "Jonathan" },
+  { last: "Ould El Moustapha", first: "Ahmed" },
   { last: "Peerenboom", first: "Valentin" },
-  { last: "Pfingstgraf" },
+  { last: "Pfingstgraf", first: "Olivia" },
   { last: "Poppert", first: "Sarina" },
   { last: "Preisenberger", first: "Laurin" },
   { last: "Raison", first: "Nanouk" },
-  { last: "Regler", first: "Ylv" },
+  { last: "Regler", first: "Ylva" },
   { last: "Reindell", first: "Elly" },
-  { last: "Rivoli", first: "And" },
+  { last: "Rivoli", first: "Andrea" },
   { last: "Roch", first: "Yannick" },
   { last: "Röttinger", first: "Rosa" },
   { last: "Sarkar", first: "Raatri" },
-  { last: "Sche" },
+  { last: "Scheible", first: "Nikolai" },
   { last: "Schmidt", first: "Alexander" },
-  { last: "Schub", first: "Mathi" },
+  { last: "Schub", first: "Mathilda" },
   { last: "Schulze", first: "Johanna" },
   { last: "Schwedler", first: "Alma" },
   { last: "Seitz", first: "Luzia" },
-  { last: "Senf", first: "T" },
+  { last: "Senf", first: "Tilman" },
   { last: "Siebel", first: "Marietta" },
   { last: "Sondermann", first: "Martin" },
-  { last: "Sparw" },
+  { last: "Sparwasser", first: "Janek" },
   { last: "Steinecker", first: "Ben" },
-  { last: "Staal", first: "Luzia" },
+  { last: "Steininger", first: "Louie" },
+  { last: "Stendahl", first: "Simon" },
+  { last: "Straßmair", first: "Luzia", aliases: ["Strassmair Luzia"] },
   { last: "Teuber", first: "Josefine" },
   { last: "Trampler Alejo", first: "Juliana" },
-  { last: "Voltsi", first: "Ioanna", aliases: ["Ioanna Voltsi"] },
-  { last: "Von Willich", first: "Fah" },
+  { last: "Umlauf", first: "Cuan" },
+  { last: "Vettoretti", first: "Matilda" },
+  { last: "Voltsi", first: "Ioanna", aliases: ["Ioanna Voltsi", "Loanna Voltsi", "Voltsi Loanna"] },
+  { last: "von Willich", first: "Fabiola", aliases: ["von Willich Fabiola von", "Fabiola von Willich"] },
   { last: "Vorderbrügge", first: "Sophie", aliases: ["Vorderbrūgge Sophie"] },
   { last: "Walch", first: "Georg" },
+  { last: "Wernecke", first: "Nick" },
   { last: "Wetzel", first: "Miya" },
   { last: "Wildauer", first: "Ava" },
-  { last: "William", first: "Valeni" },
-  { last: "Winde", first: "Ju" },
-  { last: "Zinchenko", first: "Glil" },
-  { last: "Zipperling", first: "Jona" },
+  { last: "William", first: "Valentin" },
+  { last: "Wind", first: "William" },
+  { last: "Winde", first: "Justus" },
+  { last: "Witte", first: "Meline" },
+  { last: "Yesiloglu", first: "Mahir", aliases: ["Yeşiloğlu Mahir"] },
+  { last: "Zimmermann", first: "Elias" },
+  { last: "Zinchenko", first: "Glib" },
+  { last: "Zipperling", first: "Jonas" },
 ];
 
 export function normalizeRosterName(value: string): string {
@@ -115,11 +126,22 @@ function unique(values: string[]): string[] {
   return Array.from(new Set(values.map(normalizeRosterName).filter((v) => v.length >= 2)));
 }
 
+const NAME_PARTICLES = new Set(["de", "del", "den", "der", "el", "van", "von"]);
+
+interface RosterSnapshotEntry {
+  rosterKey: string;
+  displayName: string;
+  aliases: string[];
+  ord: number;
+}
+
 function aliasesFor(person: StufenPerson): string[] {
   const first = person.first || "";
   const last = person.last;
   const firstParts = normalizeRosterName(first).split(" ").filter((p) => p.length >= 2);
-  const lastParts = normalizeRosterName(last).split(" ").filter((p) => p.length >= 2);
+  const lastParts = normalizeRosterName(last)
+    .split(" ")
+    .filter((p) => p.length >= 2 && !NAME_PARTICLES.has(p));
 
   return unique([
     last,
@@ -132,22 +154,33 @@ function aliasesFor(person: StufenPerson): string[] {
   ]);
 }
 
+function rosterEntries(): RosterSnapshotEntry[] {
+  return STUFENLISTE.map((person, ord) => {
+    const displayName = person.first ? `${person.last}, ${person.first}` : person.last;
+    return {
+      rosterKey: normalizeRosterName(`${person.last} ${person.first || ""}`),
+      displayName,
+      aliases: aliasesFor(person),
+      ord,
+    };
+  });
+}
+
 export function stufenlisteSnapshotStatements(pollId: string): { sql: string; args: InValue[] }[] {
   const createdAt = nowIso();
   const statements: { sql: string; args: InValue[] }[] = [];
 
-  STUFENLISTE.forEach((person, ord) => {
+  rosterEntries().forEach((person) => {
     const entryId = newId();
-    const displayName = person.first ? `${person.last}, ${person.first}` : person.last;
-    const rosterKey = normalizeRosterName(`${person.last} ${person.first || ""}`) || entryId;
+    const rosterKey = person.rosterKey || entryId;
 
     statements.push({
       sql: `INSERT INTO poll_roster_entries (id, poll_id, roster_key, display_name, ord, created_at)
             VALUES (?,?,?,?,?,?)`,
-      args: [entryId, pollId, rosterKey, displayName, ord, createdAt],
+      args: [entryId, pollId, rosterKey, person.displayName, person.ord, createdAt],
     });
 
-    aliasesFor(person).forEach((alias) => {
+    person.aliases.forEach((alias) => {
       statements.push({
         sql: "INSERT INTO poll_roster_aliases (poll_id, entry_id, normalized_alias) VALUES (?,?,?)",
         args: [pollId, entryId, alias],
@@ -156,6 +189,74 @@ export function stufenlisteSnapshotStatements(pollId: string): { sql: string; ar
   });
 
   return statements;
+}
+
+async function reusableEntryIdForAliases(t: Transaction, pollId: string, aliases: string[]): Promise<string | null> {
+  if (aliases.length === 0) return null;
+  const placeholders = aliases.map(() => "?").join(",");
+  const result = await t.execute({
+    sql: `SELECT DISTINCT entry_id
+          FROM poll_roster_aliases
+          WHERE poll_id = ? AND normalized_alias IN (${placeholders})`,
+    args: [pollId, ...aliases],
+  });
+  const ids = Array.from(new Set(result.rows.map((row) => String(row.entry_id))));
+  return ids.length === 1 ? ids[0] : null;
+}
+
+export async function syncStufenlisteForPoll(t: Transaction, pollId: string): Promise<void> {
+  const createdAt = nowIso();
+  const existing = await t.execute({
+    sql: "SELECT id, roster_key FROM poll_roster_entries WHERE poll_id = ?",
+    args: [pollId],
+  });
+  const byKey = new Map<string, string>();
+  existing.rows.forEach((row) => byKey.set(String(row.roster_key), String(row.id)));
+
+  const active: { entryId: string; aliases: string[] }[] = [];
+  const activeIds = new Set<string>();
+
+  for (const person of rosterEntries()) {
+    let entryId = byKey.get(person.rosterKey) ?? null;
+
+    if (!entryId) {
+      const reusable = await reusableEntryIdForAliases(t, pollId, person.aliases);
+      if (reusable && !activeIds.has(reusable)) {
+        entryId = reusable;
+        await t.execute({
+          sql: "UPDATE poll_roster_entries SET roster_key = ?, display_name = ?, ord = ? WHERE id = ? AND poll_id = ?",
+          args: [person.rosterKey, person.displayName, person.ord, entryId, pollId],
+        });
+      }
+    }
+
+    if (!entryId) {
+      entryId = newId();
+      await t.execute({
+        sql: `INSERT INTO poll_roster_entries (id, poll_id, roster_key, display_name, ord, created_at)
+              VALUES (?,?,?,?,?,?)`,
+        args: [entryId, pollId, person.rosterKey, person.displayName, person.ord, createdAt],
+      });
+    } else {
+      await t.execute({
+        sql: "UPDATE poll_roster_entries SET display_name = ?, ord = ? WHERE id = ? AND poll_id = ?",
+        args: [person.displayName, person.ord, entryId, pollId],
+      });
+    }
+
+    active.push({ entryId, aliases: person.aliases });
+    activeIds.add(entryId);
+  }
+
+  await t.execute({ sql: "DELETE FROM poll_roster_aliases WHERE poll_id = ?", args: [pollId] });
+  for (const entry of active) {
+    for (const alias of entry.aliases) {
+      await t.execute({
+        sql: "INSERT INTO poll_roster_aliases (poll_id, entry_id, normalized_alias) VALUES (?,?,?)",
+        args: [pollId, entry.entryId, alias],
+      });
+    }
+  }
 }
 
 export async function findRosterEntryForName(
@@ -168,6 +269,8 @@ export async function findRosterEntryForName(
 > {
   const normalized = normalizeRosterName(rawName);
   if (!normalized) return { ok: false, reason: "missing" };
+
+  await syncStufenlisteForPoll(t, pollId);
 
   const result = await t.execute({
     sql: `SELECT e.id AS id, e.used_at AS used_at

@@ -85,17 +85,19 @@ export default function TodayPage() {
 
           {data.urgent.length > 0 && (
             <section className="mt-7">
-              <SectionHeading num="01" title="Nächste Fristen" />
+              <SectionHeading num="01" title="Dringend" />
               <div className="flex flex-col gap-0">
                 {data.urgent.map((u) => (
-                  <Link key={u.type + u.id} href={u.type === "poll" ? `/polls/${u.id}` : `/events/${u.id}`} className="flex items-stretch gap-3.5 pb-3">
+                  <Link key={u.type + u.id} href={urgentHref(u)} className="flex items-stretch gap-3.5 pb-3">
                     <DateBubble iso={u.closes_at} />
                     <Card className="flex flex-1 items-center justify-between gap-2 rounded-2xl p-3.5">
                       <div className="min-w-0">
                         <p className="truncate text-[14.5px] font-bold">{u.title}</p>
-                        <p className="text-[12px] text-muted">{u.type === "poll" ? "Abstimmung" : "Event"}</p>
+                        <p className="text-[12px] text-muted">{urgentTypeLabel(u.type)}</p>
                       </div>
-                      <span className="shrink-0 rounded-md bg-[color:var(--accent)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.04em] text-white">{until(u.closes_at)}</span>
+                      <span className="shrink-0 rounded-md bg-[color:var(--accent)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.04em] text-white">
+                        {u.type === "news" ? "Dringend" : until(u.closes_at)}
+                      </span>
                     </Card>
                   </Link>
                 ))}
@@ -159,6 +161,18 @@ function KpiLink({ href, value, label, pop }: { href: string; value: number; lab
       <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">{label}</span>
     </Link>
   );
+}
+
+function urgentHref(item: TodayDigest["urgent"][number]): string {
+  if (item.type === "poll") return `/polls/${item.id}`;
+  if (item.type === "event") return `/events/${item.id}`;
+  return "/news";
+}
+
+function urgentTypeLabel(type: TodayDigest["urgent"][number]["type"]): string {
+  if (type === "poll") return "Abstimmung";
+  if (type === "event") return "Event";
+  return "News";
 }
 
 function Divider() {
