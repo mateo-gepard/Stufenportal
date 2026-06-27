@@ -18,7 +18,7 @@ import {
   IconSun,
   IconUser,
 } from "@/components/icons";
-import type { Me } from "@/lib/types";
+import type { AppBadges, Me } from "@/lib/types";
 import { colorThemes, type ColorThemeKey } from "@/lib/themes";
 
 export default function MorePage() {
@@ -30,13 +30,21 @@ export default function MorePage() {
   const [lbErr, setLbErr] = useState("");
   const [lbSaved, setLbSaved] = useState("");
   const [lbBusy, setLbBusy] = useState(false);
+  const [badges, setBadges] = useState<AppBadges | null>(null);
 
   useEffect(() => {
-    (api("/api/me") as Promise<Me>)
-      .then((m) => {
+    Promise.all([
+      api<Me>("/api/me"),
+      api<AppBadges>("/api/badges"),
+    ])
+      .then(([m, badgeData]) => {
         setMe(m);
+        setBadges(badgeData);
       })
-      .catch(() => setMe({ name: user?.display_name || "", show_on_leaderboard: false, points: 0, history: [] }));
+      .catch(() => {
+        setMe({ name: user?.display_name || "", show_on_leaderboard: false, points: 0, history: [] });
+        setBadges(null);
+      });
   }, [user?.display_name]);
 
   const show = !!me?.show_on_leaderboard;
@@ -117,11 +125,17 @@ export default function MorePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <NavTile href="/tasks" label="Meine Aufgaben" sub="Einteilungen" icon={<IconCheck size={21} />} tone="info" />
         <NavTile href="/kasse" label="Kasse" sub="Stand & Buch" icon={<IconEuro size={21} />} tone="ok" />
         <NavTile href="/leaderboard" label="Leaderboard" sub="Punkte & Ränge" icon={<IconMedal size={21} />} tone="pop" />
         <NavTile href="/abizeitung" label="Abizeitung" sub="Zitate & Fotos" icon={<IconPencil size={21} />} tone="info" />
-        <NavTile href="/news" label="News" sub="Alle Meldungen" icon={<IconMegaphone size={21} />} tone="accent" />
+        <NavTile
+          href="/news"
+          label="News"
+          sub={badges?.news ? `${badges.news} neue Hinweise` : "Alle Meldungen"}
+          icon={<IconMegaphone size={21} />}
+          tone="accent"
+          badge={badges?.news ? badges.news : undefined}
+        />
         {admin && <NavTile href="/admin" label="Verwaltung" sub="Admin" icon={<IconSliders size={21} />} accent />}
       </div>
 
@@ -358,6 +372,7 @@ function NavTile({
   sub,
   icon,
   accent,
+  badge,
   tone = "info",
 }: {
   href: string;
@@ -365,6 +380,7 @@ function NavTile({
   sub: string;
   icon: ReactNode;
   accent?: boolean;
+  badge?: number | "dot";
   tone?: "ok" | "pop" | "info" | "accent";
 }) {
   const tones = {
@@ -385,11 +401,23 @@ function NavTile({
           }}
         >
           {icon}
+          {badge && <TileBadge badge={badge} />}
         </span>
         <p className="relative z-[1] font-extrabold">{label}</p>
         <p className="relative z-[1] text-[12px] text-muted">{sub}</p>
       </Card>
     </Link>
+  );
+}
+
+function TileBadge({ badge }: { badge: number | "dot" }) {
+  if (badge === "dot") {
+    return <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[color:var(--accent)]" />;
+  }
+  return (
+    <span className="absolute -right-2 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-[color:var(--accent)] px-1 text-[10px] font-black leading-none text-white">
+      {badge > 9 ? "9+" : badge}
+    </span>
   );
 }
 

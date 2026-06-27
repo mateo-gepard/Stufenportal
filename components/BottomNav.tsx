@@ -1,20 +1,47 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/components/AppContext";
+import { api } from "@/lib/client";
+import type { AppBadges } from "@/lib/types";
 
 const tabs = [
-  { href: "/", label: "Heute", icon: HomeIcon },
-  { href: "/events", label: "Events", icon: CalendarIcon },
-  { href: "/polls", label: "Votes", icon: VoteIcon },
-  { href: "/news", label: "News", icon: NewsIcon },
-  { href: "/more", label: "Mehr", icon: MoreIcon },
-];
+  { href: "/", label: "Heute", icon: HomeIcon, badgeKey: null },
+  { href: "/events", label: "Events", icon: CalendarIcon, badgeKey: "events" },
+  { href: "/polls", label: "Votes", icon: VoteIcon, badgeKey: "votes" },
+  { href: "/tasks", label: "Aufgaben", icon: TasksIcon, badgeKey: "tasks" },
+  { href: "/more", label: "Mehr", icon: MoreIcon, badgeKey: "more" },
+] as const;
+
+const moreRoutes = ["/more", "/news", "/kasse", "/leaderboard", "/abizeitung", "/admin"];
 
 export default function BottomNav() {
   const path = usePathname();
   const { user } = useApp();
+  const [badges, setBadges] = useState<AppBadges | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    function load() {
+      api<AppBadges>("/api/badges")
+        .then((data) => {
+          if (!cancelled) setBadges(data);
+        })
+        .catch(() => {
+          if (!cancelled) setBadges(null);
+        });
+    }
+    load();
+    const interval = window.setInterval(load, 25000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user]);
+
   if (!user) return null;
   return (
     <nav
@@ -23,22 +50,57 @@ export default function BottomNav() {
     >
       <div className="flex items-stretch justify-around px-2 py-[9px]">
         {tabs.map((t) => {
-          const active = t.href === "/" ? path === "/" : path.startsWith(t.href);
+          const active =
+            t.href === "/"
+              ? path === "/"
+              : t.href === "/more"
+                ? moreRoutes.some((route) => path === route || path.startsWith(`${route}/`))
+                : path === t.href || path.startsWith(`${t.href}/`);
           const Icon = t.icon;
+          const badge = t.badgeKey ? badgeFor(t.badgeKey, badges) : null;
           return (
             <Link
               key={t.href}
               href={t.href}
-              className="flex flex-1 flex-col items-center justify-center gap-1 px-2 py-1"
+              className="relative flex flex-1 flex-col items-center justify-center gap-1 px-2 py-1"
               style={{ color: active ? "var(--signal-text)" : "var(--text-muted)" }}
             >
-              <Icon active={active} />
+              <span className="relative">
+                <Icon active={active} />
+                {badge && <NavBadge badge={badge} />}
+              </span>
               <span className="text-[11px] font-medium">{t.label}</span>
             </Link>
           );
         })}
       </div>
     </nav>
+  );
+}
+
+function badgeFor(key: "events" | "votes" | "tasks" | "more", badges: AppBadges | null): number | "dot" | null {
+  if (!badges) return null;
+  if (key === "more") return badges.more ? "dot" : null;
+  const value = badges[key];
+  return value > 0 ? value : null;
+}
+
+function NavBadge({ badge }: { badge: number | "dot" }) {
+  if (badge === "dot") {
+    return (
+      <span
+        className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-surface"
+        style={{ background: "var(--accent)" }}
+      />
+    );
+  }
+  return (
+    <span
+      className="absolute -right-2.5 -top-2 flex min-w-[17px] h-[17px] items-center justify-center rounded-full px-1 text-[10px] font-black leading-none text-white shadow-[0_1px_3px_rgba(0,0,0,.18)]"
+      style={{ background: "var(--accent)" }}
+    >
+      {badge > 9 ? "9+" : badge}
+    </span>
   );
 }
 
@@ -64,11 +126,12 @@ function VoteIcon({ active }: { active: boolean }) {
     </svg>
   );
 }
-function NewsIcon({ active }: { active: boolean }) {
+function TasksIcon({ active }: { active: boolean }) {
   return (
     <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.9} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 9v6h3l9 5V4L7 9H4Z" />
-      <path d="M19 9.5a4 4 0 0 1 0 5" />
+      <path d="M8.5 11.5 11 14l4.5-5" />
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8 17h8" />
     </svg>
   );
 }

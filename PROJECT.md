@@ -50,13 +50,13 @@ Die App ist um eine Bottom-Navigation gebaut:
 - Heute
 - Events
 - Votes
-- News
+- Meine Aufgaben
 - Mehr
 
 Weitere wichtige Bereiche liegen im Mehr-Tab:
 
 - Kasse
-- Meine Aufgaben
+- News
 - Leaderboard
 - Abizeitung
 - Einstellungen

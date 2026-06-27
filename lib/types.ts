@@ -205,3 +205,11 @@ export interface MyTasksData {
   done_milestones: MyAssignedMilestone[];
   signups: MySignupTask[];
 }
+
+export interface AppBadges {
+  events: number;
+  votes: number;
+  tasks: number;
+  news: number;
+  more: boolean;
+}

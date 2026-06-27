@@ -16,6 +16,7 @@ const topBarRoutes: {
   { test: (p) => /^\/polls\/[^/]+/.test(p), kicker: "Abstimmung", title: "Abstimmung", backTo: "/polls" },
   { test: (p) => p === "/kasse", kicker: "Stufenportal", title: "Kasse", backTo: "/more" },
   { test: (p) => p === "/tasks", kicker: "Stufenportal", title: "Meine Aufgaben", backTo: "/more" },
+  { test: (p) => p === "/news", kicker: "Stufenportal", title: "News", backTo: "/more" },
   { test: (p) => p === "/leaderboard", kicker: "Stufenportal", title: "Leaderboard", backTo: "/more" },
   { test: (p) => p === "/abizeitung", kicker: "Stufenportal", title: "Abizeitung", backTo: "/more" },
   { test: (p) => p === "/admin", kicker: "Stufenportal", title: "Verwaltung", backTo: "/more" },
