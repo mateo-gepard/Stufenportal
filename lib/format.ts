@@ -1,6 +1,7 @@
 // Anzeige-Helfer. Geld als Cent (Integer) speichern, hier formatieren.
+import { APP_LOCALE, APP_TIME_ZONE, appDayDiff } from "@/lib/time";
 
-const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+const eur = new Intl.NumberFormat(APP_LOCALE, { style: "currency", currency: "EUR" });
 export function money(cents: number): string {
   return eur.format(Math.round(cents) / 100);
 }
@@ -15,14 +16,15 @@ export function centsFromEuroInput(value: string): number | null {
 
 export function euroInputValue(cents?: number | null): string {
   if (!cents) return "";
-  return (Math.round(cents) / 100).toLocaleString("de-DE", {
+  return (Math.round(cents) / 100).toLocaleString(APP_LOCALE, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
 }
 
-const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" });
-const dateTimeFmt = new Intl.DateTimeFormat("de-DE", {
+const dateFmt = new Intl.DateTimeFormat(APP_LOCALE, { timeZone: APP_TIME_ZONE, day: "2-digit", month: "short" });
+const dateTimeFmt = new Intl.DateTimeFormat(APP_LOCALE, {
+  timeZone: APP_TIME_ZONE,
   day: "2-digit",
   month: "short",
   hour: "2-digit",
@@ -55,13 +57,7 @@ export function until(iso?: string | null): string {
 
 export function relativeDay(iso?: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  const today = new Date();
-  const diff = Math.round(
-    (new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() -
-      new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /
-      864e5
-  );
+  const diff = appDayDiff(iso);
   if (diff === 0) return "Heute";
   if (diff === 1) return "Morgen";
   if (diff === -1) return "Gestern";

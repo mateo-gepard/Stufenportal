@@ -20,9 +20,11 @@ async function listEvents(): Promise<EventSummary[]> {
               (SELECT COUNT(*) FROM milestones m WHERE m.event_id = e.id AND m.deleted_at IS NULL AND m.done = 1) AS done_count
        FROM events e
        WHERE e.deleted_at IS NULL
+         AND e.status NOT IN ('done','cancelled')
+         AND (COALESCE(e.end_at, e.start_at) IS NULL OR COALESCE(e.end_at, e.start_at) >= ?)
        ORDER BY (e.start_at IS NULL), e.start_at ASC, e.created_at DESC`
     )
-    .all<EventSummary>();
+    .all<EventSummary>(nowIso());
 }
 
 export async function GET() {

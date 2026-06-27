@@ -14,6 +14,7 @@ import {
 } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
 import { IconBookmark, IconMegaphone, IconPencil, IconPlus, IconRadioOff, IconRadioOn, IconTrash } from "@/components/icons";
+import { appDayDiff, formatAppDate } from "@/lib/time";
 
 const newsFilters = ["Alle", "Wichtig", "Orga", "Sozial"] as const;
 type NewsFilter = (typeof newsFilters)[number];
@@ -280,14 +281,11 @@ function normalizeNewsText(value: string): string {
 }
 
 function newsDateLabel(iso: string): string {
-  const date = new Date(iso);
-  const today = new Date();
-  const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diff = Math.round((start(today) - start(date)) / 864e5);
+  const diff = -appDayDiff(iso);
   if (diff === 0) return "Heute";
   if (diff === 1) return "Gestern";
   if (diff > 1 && diff < 7) return `${diff} Tage`;
-  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" }).format(date);
+  return formatAppDate(iso, { day: "2-digit", month: "short" });
 }
 
 function NewsEditor({

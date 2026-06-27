@@ -7,6 +7,7 @@ import type { TodayDigest } from "@/lib/types";
 import { Card, SkeletonList } from "@/components/ui";
 import { IconCheck, IconSparkle } from "@/components/icons";
 import { until } from "@/lib/format";
+import { appDateParts, appHour, appMonthShort, formatAppDate } from "@/lib/time";
 
 export default function TodayPage() {
   const [data, setData] = useState<TodayDigest | null>(null);
@@ -20,9 +21,9 @@ export default function TodayPage() {
     return () => clearInterval(t);
   }, []);
 
-  const today = new Date();
-  const todayLabel = today.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
-  const greeting = today.getHours() < 12 ? "Guten Morgen" : today.getHours() < 18 ? "Hey, heute" : "Guten Abend";
+  const todayLabel = formatAppDate(Date.now(), { weekday: "short", day: "numeric", month: "short" });
+  const hour = appHour();
+  const greeting = hour < 12 ? "Guten Morgen" : hour < 18 ? "Hey, heute" : "Guten Abend";
 
   return (
     <div className="sp-in pb-6">
@@ -176,7 +177,7 @@ function urgentTypeLabel(type: TodayDigest["urgent"][number]["type"]): string {
 }
 
 function Divider() {
-  return <div className="w-px self-stretch bg-[repeating-linear-gradient(var(--paper)_0_3px,transparent_3px_7px)] opacity-25" />;
+  return <div className="w-px self-stretch bg-[color:var(--paper)] opacity-20" />;
 }
 
 function SectionHeading({ num, title, compact }: { num: string; title: string; compact?: boolean }) {
@@ -189,14 +190,14 @@ function SectionHeading({ num, title, compact }: { num: string; title: string; c
 }
 
 function DateBubble({ iso }: { iso: string }) {
-  const d = new Date(iso);
+  const parts = appDateParts(iso);
   return (
     <div className="flex w-[54px] shrink-0 flex-col items-center">
       <div className="flex h-[54px] w-[54px] flex-col items-center justify-center rounded-full border-[2.5px] border-[color:var(--ink)] bg-[color:var(--paper)] leading-none">
-        <span className="font-display text-[21px] font-extrabold">{String(d.getDate()).padStart(2, "0")}</span>
-        <span className="text-[8.5px] font-extrabold uppercase tracking-[0.08em] text-muted">{d.toLocaleDateString("de-DE", { month: "short" }).replace(".", "")}</span>
+        <span className="font-display text-[21px] font-extrabold">{String(parts.day).padStart(2, "0")}</span>
+        <span className="text-[8.5px] font-extrabold uppercase tracking-[0.08em] text-muted">{appMonthShort(iso)}</span>
       </div>
-      <div className="my-1 w-[2.5px] flex-1 bg-[repeating-linear-gradient(var(--line-ink)_0_4px,transparent_4px_8px)]" />
+      <div className="my-1 w-[2px] flex-1 rounded-full bg-[color:var(--line-ink)] opacity-50" />
     </div>
   );
 }

@@ -15,6 +15,7 @@ const DEFAULT_SPEAKER_NAMES = [
   "Kriegel, Sven",
   "Zimmermann, Elias",
   "Pfingstgraf, Olivia",
+  "Mamaladze, Mateo",
 ];
 
 function nowIso() {

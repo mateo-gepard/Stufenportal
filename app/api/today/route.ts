@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   const device = deviceId(req);
   const user = await currentUser();
   const now = Date.now();
+  const nowText = new Date(now).toISOString();
 
   // 1. Beförderte News (max 3, abgelaufene featured_until fallen raus).
   const featuredRaw = await db
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
     )
     .all<{ id: string; title: string; published_at: string }>();
   urgentNews.forEach((n) =>
-    urgent.push({ type: "news", id: n.id, title: n.title, closes_at: n.published_at || new Date(now).toISOString() })
+    urgent.push({ type: "news", id: n.id, title: n.title, closes_at: n.published_at || nowText })
   );
   const soonEvents = await db
     .prepare(
@@ -66,7 +67,7 @@ export async function GET(req: Request) {
          AND start_at IS NOT NULL AND start_at <= ? AND start_at >= ?
        ORDER BY start_at ASC`
     )
-    .all<any>(new Date(soon).toISOString(), new Date(now).toISOString());
+    .all<any>(new Date(soon).toISOString(), nowText);
   soonEvents.forEach((e) => urgent.push({ type: "event", id: e.id, title: e.title, closes_at: e.start_at }));
   urgent.sort((a, b) => {
     if (a.type === "news" && b.type !== "news") return -1;
@@ -82,10 +83,11 @@ export async function GET(req: Request) {
               (SELECT COUNT(*) FROM milestones m WHERE m.event_id = e.id AND m.deleted_at IS NULL AND m.done = 1) AS done_count
        FROM events e
        WHERE e.deleted_at IS NULL AND e.status NOT IN ('done','cancelled')
+         AND (COALESCE(e.end_at, e.start_at) IS NULL OR COALESCE(e.end_at, e.start_at) >= ?)
        ORDER BY (e.start_at IS NULL), e.start_at ASC
        LIMIT 5`
     )
-    .all<TodayDigest["upcoming"][number]>();
+    .all<TodayDigest["upcoming"][number]>(nowText);
 
   // 4. Offene Abstimmungen (gekürzt — nie der volle Stimmzettel).
   const openPolls = await Promise.all(

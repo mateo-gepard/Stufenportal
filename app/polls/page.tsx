@@ -8,6 +8,7 @@ import type { PollMethod, PollStatus } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Textarea, Select, Toggle } from "@/components/form";
 import { IconPlus, IconUser } from "@/components/icons";
+import { appDateTimeLocalToIso, formatAppDate } from "@/lib/time";
 
 interface PollListItem {
   id: string;
@@ -190,9 +191,8 @@ function turnoutFor(ballots: number) {
 }
 
 function deadlineLabel(iso: string): string {
-  const d = new Date(iso);
-  const weekday = new Intl.DateTimeFormat("de-DE", { weekday: "short" }).format(d).replace(".", "");
-  const time = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(d);
+  const weekday = formatAppDate(iso, { weekday: "short" }).replace(".", "");
+  const time = formatAppDate(iso, { hour: "2-digit", minute: "2-digit" });
   return `bis ${weekday} ${time}`;
 }
 
@@ -250,7 +250,7 @@ function CreatePollSheet({
           ranked_veto_enabled: method === "ranked" && rankVeto,
           anonymous,
           reveal: anonymous ? reveal : "live",
-          closes_at: closes ? new Date(closes).toISOString() : null,
+          closes_at: closes ? appDateTimeLocalToIso(closes) : null,
         },
       });
       setQuestion("");
@@ -306,7 +306,7 @@ function CreatePollSheet({
           </p>
         </div>
       )}
-      <Field label="Frist (optional)">
+      <Field label="Frist (Berlin, optional)">
         <Input type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} />
       </Field>
       <div className="mb-3">

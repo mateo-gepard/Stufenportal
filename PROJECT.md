@@ -187,8 +187,8 @@ Seeding:
 - `npm run seed:accounts` legt alle 99 Accounts an.
 - Re-run ist idempotent und dupliziert keine Accounts.
 - `npm run seed:accounts -- --rotate` setzt neue 6-Zeichen-Passwoerter.
-- Default-Sprecher sind Mio Boege, Luzia Seitz, Carlotta Hattig, Marietta Siebel, Sven Kriegel, Elias Zimmermann und Olivia Pfingstgraf.
-- Weitere initiale Sprecher koennen zusaetzlich ueber `INITIAL_SPEAKER_NAMES="Mamaladze, Mateo;..."` gesetzt werden.
+- Default-Sprecher sind Mio Boege, Luzia Seitz, Carlotta Hattig, Marietta Siebel, Sven Kriegel, Elias Zimmermann, Olivia Pfingstgraf und Mateo Mamaladze.
+- Weitere initiale Sprecher koennen zusaetzlich ueber `INITIAL_SPEAKER_NAMES="Nachname, Vorname;..."` gesetzt werden.
 
 Legacy-Kompatibilitaet:
 

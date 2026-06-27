@@ -8,6 +8,7 @@ import type { EventSummary } from "@/lib/types";
 import { Card, MilestoneBar, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input, Textarea, Select } from "@/components/form";
 import { centsFromEuroInput, relativeDay } from "@/lib/format";
+import { appDateParts, appDateTimeLocalToIso, appMonthShort, formatAppDate } from "@/lib/time";
 import { IconPlus } from "@/components/icons";
 
 export default function EventsPage() {
@@ -77,7 +78,9 @@ function EventsList({ events }: { events: EventSummary[] }) {
           <div className="min-w-0 flex-1">
             <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--pop)]">Als nächstes</span>
             <h2 className="sp-display mt-2 text-[27px] leading-[1.02]">{hero.title}</h2>
-            <p className="mt-1 text-[12.5px] opacity-75">{hero.start_at ? new Date(hero.start_at).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) : "Ohne Datum"}</p>
+            <p className="mt-1 text-[12.5px] opacity-75">
+              {hero.start_at ? formatAppDate(hero.start_at, { weekday: "long", day: "numeric", month: "long" }) : "Ohne Datum"}
+            </p>
           </div>
           <Countdown iso={hero.start_at} />
         </div>
@@ -104,7 +107,7 @@ function EventsList({ events }: { events: EventSummary[] }) {
 }
 
 function EventCard({ event }: { event: EventSummary }) {
-  const d = event.start_at ? new Date(event.start_at) : null;
+  const d = event.start_at ? appDateParts(event.start_at) : null;
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex">
@@ -112,8 +115,8 @@ function EventCard({ event }: { event: EventSummary }) {
         <div className="min-w-0 flex-1 p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[13px] border border-line bg-[color:var(--soft)] leading-none">
-              <span className="font-display text-[20px] font-extrabold">{d ? String(d.getDate()).padStart(2, "0") : "--"}</span>
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.05em] text-muted">{d ? d.toLocaleDateString("de-DE", { month: "short" }).replace(".", "") : ""}</span>
+              <span className="font-display text-[20px] font-extrabold">{d ? String(d.day).padStart(2, "0") : "--"}</span>
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.05em] text-muted">{event.start_at ? appMonthShort(event.start_at) : ""}</span>
             </div>
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex items-center gap-2">
@@ -231,7 +234,7 @@ function CreateEventSheet({
         body: {
           title: title.trim(),
           description,
-          start_at: start ? new Date(start).toISOString() : null,
+          start_at: start ? appDateTimeLocalToIso(start) : null,
           status,
           money_goal_cents: moneyGoalCents,
           money_goal_note: moneyGoalNote,
@@ -265,7 +268,7 @@ function CreateEventSheet({
       </Field>
       <div className="flex gap-3">
         <div className="flex-1">
-          <Field label="Datum">
+          <Field label="Datum (Berlin)">
             <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
           </Field>
         </div>

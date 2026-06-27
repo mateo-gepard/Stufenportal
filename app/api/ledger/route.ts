@@ -35,11 +35,12 @@ export async function GET() {
        FROM events
        WHERE deleted_at IS NULL
          AND status NOT IN ('done','cancelled')
+         AND (COALESCE(end_at, start_at) IS NULL OR COALESCE(end_at, start_at) >= ?)
          AND money_goal_cents IS NOT NULL
          AND money_goal_cents > 0
        ORDER BY (start_at IS NULL), start_at ASC, created_at DESC`
     )
-    .all<EventGoal>();
+    .all<EventGoal>(nowIso());
   const eventGoalTotal = eventGoals.reduce((sum, goal) => sum + goal.money_goal_cents, 0);
 
   return NextResponse.json({ entries, balance: income - expense, income, expense, event_goal_total: eventGoalTotal, event_goals: eventGoals });
