@@ -165,20 +165,11 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  padding: 0 18px calc(92px + env(safe-area-inset-bottom));
+  padding: 22px 18px calc(92px + env(safe-area-inset-bottom));
 }
 
-.sp-status {
-  flex: none;
-  height: 46px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 30px 0 34px;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.2px;
-  z-index: 30;
+.sp-device:has(.sp-context-topbar) .sp-content {
+  padding-top: 0;
 }
 
 .sp-grain {

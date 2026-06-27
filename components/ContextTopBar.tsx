@@ -60,7 +60,7 @@ export default function ContextTopBar() {
   if (!meta) return null;
 
   return (
-    <div className="relative z-30 flex shrink-0 items-center gap-3 px-[18px] pb-3.5 pt-1">
+    <div className="sp-context-topbar relative z-30 flex shrink-0 items-center gap-3 px-[18px] pb-3.5 pt-[22px]">
       <button
         type="button"
         onClick={() => (meta.backTo ? router.push(meta.backTo) : router.back())}
