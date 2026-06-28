@@ -67,6 +67,13 @@ Weitere wichtige Bereiche liegen im Mehr-Tab:
 
 Detailseiten nutzen kontextuelle Topbars mit Zurueck-Button, kleinem Kicker und Titel. Admin-Aktionen erscheinen nicht dauerhaft als laute UI, sondern kontextbezogen ueber kleine Aktionsbuttons und Bottom-Sheets.
 
+Navigations-Badges zeigen ungesehene Neuerungen pro Account:
+
+- Events, Votes und Meine Aufgaben zeigen Zahlen fuer ungesehene relevante Items.
+- Mehr zeigt einen kleinen Punkt, wenn ein Unterbereich wie News ungesehenen Inhalt hat.
+- Unterbereiche wie News zeigen im Mehr-Tab ebenfalls ihren eigenen Badge.
+- Sobald die jeweilige Seite geoeffnet wird, markiert der Server die aktuellen Items als gesehen; der Badge verschwindet dann bis neuer Inhalt hinzukommt.
+
 ## Design Language
 
 ### Gesamtgefuehl

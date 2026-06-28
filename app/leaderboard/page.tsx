@@ -26,7 +26,7 @@ export default function LeaderboardPage() {
     <div className="sp-in pb-6">
       <div className="mb-7 flex items-start justify-between gap-4">
         <p className="max-w-[285px] text-[17px] font-medium leading-[1.5] text-muted">
-          Freiwillig & opt-in. Sprecher vergeben Punkte mit Grund - niemand erscheint automatisch.
+          Standardmäßig sichtbar, aber freiwillig. Du kannst dich im Mehr-Tab ausblenden; Sprecher vergeben Punkte mit Grund.
         </p>
         {admin && (
           <Button onClick={() => setAward(true)} variant="surface">
@@ -40,10 +40,10 @@ export default function LeaderboardPage() {
       {board && board.length === 0 && (
         <Card className="text-center text-muted">
           <p className="py-6">
-            Noch ist niemand sichtbar.
+            Aktuell ist niemand sichtbar.
             <br />
             <Link href="/more" className="mt-2 inline-block text-signal-text">
-              In „Mehr" aktivieren
+              Sichtbarkeit in „Mehr" prüfen
             </Link>
           </p>
         </Card>

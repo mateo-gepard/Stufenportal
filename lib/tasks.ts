@@ -40,7 +40,7 @@ export async function getMyTasks(user: AuthUser): Promise<MyTasksData> {
        JOIN events e ON e.id = m.event_id
        WHERE m.deleted_at IS NULL
          AND e.deleted_at IS NULL
-         AND e.status NOT IN ('done','cancelled')
+         AND e.status NOT IN ('idea','done','cancelled')
          AND m.assignee IS NOT NULL
          AND TRIM(m.assignee) != ''
          AND (COALESCE(e.end_at, e.start_at) IS NULL OR COALESCE(e.end_at, e.start_at) >= ?)
@@ -64,7 +64,7 @@ export async function getMyTasks(user: AuthUser): Promise<MyTasksData> {
        WHERE su.user_id = ?
          AND l.deleted_at IS NULL
          AND e.deleted_at IS NULL
-         AND e.status NOT IN ('done','cancelled')
+         AND e.status NOT IN ('idea','done','cancelled')
          AND (COALESCE(e.end_at, e.start_at) IS NULL OR COALESCE(e.end_at, e.start_at) >= ?)
        ORDER BY (su.status = 'waitlist'), (e.start_at IS NULL), e.start_at ASC, l.ord ASC, s.ord ASC`
     )
@@ -76,4 +76,3 @@ export async function getMyTasks(user: AuthUser): Promise<MyTasksData> {
     signups,
   };
 }
-

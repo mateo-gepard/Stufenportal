@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/components/AppContext";
 import { api } from "@/lib/client";
 import type { AppBadges } from "@/lib/types";
+import type { BadgeSection } from "@/lib/badges";
 
 const tabs = [
   { href: "/", label: "Heute", icon: HomeIcon, badgeKey: null },
@@ -21,6 +22,13 @@ export default function BottomNav() {
   const path = usePathname();
   const { user } = useApp();
   const [badges, setBadges] = useState<AppBadges | null>(null);
+
+  const loadBadges = useCallback(() => {
+    if (!user) return;
+    api<AppBadges>("/api/badges")
+      .then(setBadges)
+      .catch(() => setBadges(null));
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -41,6 +49,25 @@ export default function BottomNav() {
       window.clearInterval(interval);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const section = seenSectionForPath(path);
+    if (!section) {
+      loadBadges();
+      return;
+    }
+
+    let cancelled = false;
+    api("/api/badges/seen", { method: "POST", body: { section } })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) loadBadges();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadBadges, path, user]);
 
   if (!user) return null;
   return (
@@ -76,6 +103,14 @@ export default function BottomNav() {
       </div>
     </nav>
   );
+}
+
+function seenSectionForPath(path: string): BadgeSection | null {
+  if (path === "/events" || path.startsWith("/events/")) return "events";
+  if (path === "/polls" || path.startsWith("/polls/")) return "votes";
+  if (path === "/tasks" || path.startsWith("/tasks/")) return "tasks";
+  if (path === "/news" || path.startsWith("/news/")) return "news";
+  return null;
 }
 
 function badgeFor(key: "events" | "votes" | "tasks" | "more", badges: AppBadges | null): number | "dot" | null {

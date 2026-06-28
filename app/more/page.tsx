@@ -163,7 +163,7 @@ export default function MorePage() {
         <SettingSwitch
           icon={<IconMedal size={19} />}
           title="Im Leaderboard zeigen"
-          subtitle="Opt-in, jederzeit umkehrbar"
+          subtitle="Standardmäßig an, jederzeit aus"
           checked={show}
           onToggle={() => onToggleLb(!show)}
         />
@@ -245,7 +245,7 @@ export default function MorePage() {
       <p className="mt-8 px-1 text-[12px] leading-relaxed text-muted">
         Dein Account ist fest mit der Stufenliste verbunden. Abstimmungen sind dadurch auf eine Stimme pro Person
         begrenzt; bei anonymen Votes bleibt nur die Auswahl anonymisiert gespeichert. Das Leaderboard ist freiwillig
-        und standardmäßig an.
+        und standardmäßig sichtbar, kann hier aber ausgeschaltet werden.
       </p>
     </div>
   );

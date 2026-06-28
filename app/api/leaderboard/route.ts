@@ -6,7 +6,7 @@ import { buildLeaderboard, type RawLeaderboardRow } from "@/lib/leaderboard";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Nur Mitglieder, die sich selbst sichtbar geschaltet haben (opt-in).
+// Nur Accounts, die aktuell sichtbar sind. Sichtbarkeit ist standardmäßig an und kann ausgeschaltet werden.
 export async function GET(req: Request) {
   const db = getDb();
   const user = await currentUser();

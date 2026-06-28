@@ -60,8 +60,8 @@ const steps: OnboardingStep[] = [
   {
     kicker: "Fast fertig",
     title: "Mehr ist deine Werkzeugkiste",
-    body: "Im Mehr-Tab findest du Kasse, Abizeitung, Leaderboard, Farbthema und deinen Account. Sprecherrechte hängen direkt an deiner Rolle.",
-    points: ["Leaderboard bleibt freiwillig", "Logout und Rolle stehen im Mehr-Tab", "Onboarding kannst du dort erneut starten"],
+    body: "Im Mehr-Tab findest du Kasse, News, Abizeitung, Leaderboard, Farbthema und deinen Account. Sprecherrechte hängen direkt an deiner Rolle.",
+    points: ["Leaderboard ist standardmäßig sichtbar", "Du kannst dich im Mehr-Tab ausblenden", "Onboarding kannst du dort erneut starten"],
     iconBg: "var(--ok-soft)",
     iconFg: "var(--ok)",
     iconPath: "M12 3 4 6.5v5c0 4.5 3.3 7.8 8 9.5 4.7-1.7 8-5 8-9.5v-5L12 3Zm-3 8 2 2 4-4",
