@@ -6,9 +6,11 @@ import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { TodayDigest } from "@/lib/types";
 import { Card, SkeletonList } from "@/components/ui";
+import WeekTimeline from "@/components/WeekTimeline";
 import { IconCheck, IconSparkle } from "@/components/icons";
 import { until } from "@/lib/format";
 import { appDateParts, appHour, appMonthShort, formatAppDate } from "@/lib/time";
+import { useCountUp } from "@/lib/useCountUp";
 
 export default function TodayPage() {
   const { user } = useApp();
@@ -71,11 +73,13 @@ export default function TodayPage() {
               <KpiLink href="/events" value={data.upcoming.length} label="Events bald" />
               <Divider />
               <div className="flex flex-1 flex-col items-center gap-1 text-center">
-                <span className="font-display text-[42px] font-extrabold leading-[0.9] text-[color:var(--accent)]">{data.urgent.length}</span>
+                <CountUpText value={data.urgent.length} className="font-display text-[42px] font-extrabold leading-[0.9] text-[color:var(--accent)]" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">dringend</span>
               </div>
             </div>
           </div>
+
+          <WeekTimeline events={data.upcoming} polls={data.openPolls} />
 
           {data.featuredNews.length > 0 && (
             <section className="mt-[30px]">
@@ -83,7 +87,7 @@ export default function TodayPage() {
                 <div className="absolute left-3.5 top-[-12px] z-10 inline-flex -rotate-2 items-center gap-1.5 rounded-lg border-2 border-[color:var(--ink)] bg-[color:var(--pop)] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[color:var(--ink)] shadow-[2px_2px_0_var(--ink)]">
                   Angepinnt
                 </div>
-                <Link href="/news" className="sp-hero-dark relative block overflow-hidden rounded-[22px] px-5 pb-5 pt-7">
+                <Link href="/news" className="sp-hero-dark relative block overflow-hidden rounded-[22px] px-5 pb-5 pt-7 transition active:scale-[0.99]">
                   <div className="sp-half absolute -bottom-4 -right-4 h-[120px] w-[120px] text-white/15" />
                   <span className="relative inline-block rounded-md bg-[color:var(--accent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white">
                     {data.featuredNews[0].category}
@@ -102,9 +106,9 @@ export default function TodayPage() {
           {data.urgent.length > 0 && (
             <section className="mt-7">
               <SectionHeading num="01" title="Dringend" />
-              <div className="flex flex-col gap-0">
+              <div className="sp-stagger flex flex-col gap-0">
                 {data.urgent.map((u) => (
-                  <Link key={u.type + u.id} href={urgentHref(u)} className="flex items-stretch gap-3.5 pb-3">
+                  <Link key={u.type + u.id} href={urgentHref(u)} className="flex items-stretch gap-3.5 pb-3 transition active:scale-[0.99]">
                     <DateBubble iso={u.closes_at} />
                     <Card className="flex flex-1 items-center justify-between gap-2 rounded-2xl p-3.5">
                       <div className="min-w-0">
@@ -127,9 +131,9 @@ export default function TodayPage() {
                 <SectionHeading num="02" title="Die Stufe stimmt ab" compact />
                 <Link href="/polls" className="text-[12.5px] font-bold text-[color:var(--accent)]">Alle</Link>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="sp-stagger flex flex-col gap-3">
                 {data.openPolls.map((p) => (
-                  <Link key={p.id} href={`/polls/${p.id}`}>
+                  <Link key={p.id} href={`/polls/${p.id}`} className="block transition active:scale-[0.99]">
                     <Card className="p-4">
                       <div className="flex items-center gap-2">
                         <span className="rounded-md bg-[color:var(--info-soft)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-[color:var(--info)]">Vote</span>
@@ -142,7 +146,7 @@ export default function TodayPage() {
                         {p.voted && (
                           <span className="ml-2 inline-flex items-center gap-1 text-success">
                             <IconCheck size={12} />
-                            gewählt
+                            Abgestimmt
                           </span>
                         )}
                       </p>
@@ -171,12 +175,18 @@ export default function TodayPage() {
 }
 
 function KpiLink({ href, value, label, pop }: { href: string; value: number; label: string; pop?: boolean }) {
+  const n = useCountUp(value);
   return (
-    <Link href={href} className="flex flex-1 flex-col items-center gap-1 text-center text-[color:var(--paper)]">
-      <span className={`font-display text-[42px] font-extrabold leading-[0.9] ${pop ? "text-[color:var(--pop)]" : ""}`}>{value}</span>
+    <Link href={href} className="flex flex-1 flex-col items-center gap-1 text-center text-[color:var(--paper)] transition active:scale-[0.96]">
+      <span className={`font-display text-[42px] font-extrabold leading-[0.9] ${pop ? "text-[color:var(--pop)]" : ""}`}>{Math.round(n)}</span>
       <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">{label}</span>
     </Link>
   );
+}
+
+function CountUpText({ value, className }: { value: number; className?: string }) {
+  const n = useCountUp(value);
+  return <span className={className}>{Math.round(n)}</span>;
 }
 
 function urgentHref(item: TodayDigest["urgent"][number]): string {

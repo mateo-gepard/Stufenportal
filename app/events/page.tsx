@@ -9,7 +9,7 @@ import { Card, MilestoneBar, SkeletonList, BottomSheet, Button } from "@/compone
 import { Field, Input, Textarea, Select } from "@/components/form";
 import { centsFromEuroInput, relativeDay } from "@/lib/format";
 import { appDateParts, appDateTimeLocalToIso, appMonthShort, formatAppDate } from "@/lib/time";
-import { IconPlus } from "@/components/icons";
+import { IconPlus, IconTrash } from "@/components/icons";
 
 export default function EventsPage() {
   const { admin } = useApp();
@@ -72,7 +72,7 @@ function EventsList({ events }: { events: EventSummary[] }) {
 
   return (
     <>
-      <Link href={`/events/${hero.id}`} className="sp-hero-dark relative mt-1 block overflow-hidden rounded-[24px] p-5">
+      <Link href={`/events/${hero.id}`} className="sp-hero-dark relative mt-1 block overflow-hidden rounded-[24px] p-5 transition active:scale-[0.99]">
         <div className="sp-half absolute -right-4 -top-4 h-[130px] w-[130px] text-white/15" />
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -95,9 +95,9 @@ function EventsList({ events }: { events: EventSummary[] }) {
       </Link>
 
       <div className="sp-section-kicker mb-3 mt-6">Alle Events</div>
-      <div className="flex flex-col gap-3">
+      <div className="sp-stagger flex flex-col gap-3">
         {rest.map((e) => (
-          <Link key={e.id} href={`/events/${e.id}`}>
+          <Link key={e.id} href={`/events/${e.id}`} className="block transition active:scale-[0.99]">
             <EventCard event={e} />
           </Link>
         ))}
@@ -196,12 +196,12 @@ function CreateEventSheet({
   const [description, setDescription] = useState("");
   const [start, setStart] = useState("");
   const [status, setStatus] = useState("planning");
-  const [milestones, setMilestones] = useState("");
+  const [milestones, setMilestones] = useState<string[]>([""]);
   const [moneyGoal, setMoneyGoal] = useState("");
   const [moneyGoalNote, setMoneyGoalNote] = useState("");
   const [listTitle, setListTitle] = useState("");
   const [overflow, setOverflow] = useState("block");
-  const [slots, setSlots] = useState("");
+  const [slots, setSlots] = useState<{ label: string; capacity: string }[]>([{ label: "", capacity: "" }]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -213,20 +213,18 @@ function CreateEventSheet({
     setErr("");
     try {
       const ms = milestones
-        .split("\n")
-        .map((l) => l.trim())
+        .map((m) => m.trim())
         .filter(Boolean)
         .map((title) => ({ title }));
       const lists = [];
       if (listTitle.trim()) {
         const slotRows = slots
-          .split("\n")
-          .map((l) => l.trim())
-          .filter(Boolean)
-          .map((l) => {
-            const [label, cap] = l.split("|").map((x) => x.trim());
-            return { label, capacity: cap ? Number(cap) : null };
-          });
+          .map((s) => {
+            const label = s.label.trim();
+            const cap = Number(s.capacity);
+            return { label, capacity: s.capacity.trim() && Number.isFinite(cap) && cap > 0 ? cap : null };
+          })
+          .filter((s) => s.label);
         lists.push({ title: listTitle.trim(), overflow, slots: slotRows });
       }
       await api("/api/events", {
@@ -245,11 +243,11 @@ function CreateEventSheet({
       setTitle("");
       setDescription("");
       setStart("");
-      setMilestones("");
+      setMilestones([""]);
       setMoneyGoal("");
       setMoneyGoalNote("");
       setListTitle("");
-      setSlots("");
+      setSlots([{ label: "", capacity: "" }]);
       onCreated();
     } catch (e) {
       setErr((e as Error).message);
@@ -282,12 +280,47 @@ function CreateEventSheet({
           </Field>
         </div>
       </div>
-      <Field label="Meilensteine" hint="Einer pro Zeile.">
-        <Textarea
-          value={milestones}
-          onChange={(e) => setMilestones(e.target.value)}
-          placeholder={"Standplatz klären\nBackliste füllen"}
-        />
+      <Field label="Meilensteine" hint="Schritte bis zum Ziel. Enter fügt einen weiteren hinzu.">
+        <div className="space-y-2">
+          {milestones.map((m, i) => (
+            <div key={i} className="sp-in flex items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[color:var(--soft)] font-display text-[13px] font-black text-muted">
+                {i + 1}
+              </span>
+              <Input
+                value={m}
+                onChange={(e) =>
+                  setMilestones((list) => list.map((x, idx) => (idx === i ? e.target.value : x)))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setMilestones((list) => [...list, ""]);
+                  }
+                }}
+                placeholder={i === 0 ? "z. B. Standplatz klären" : "Weiterer Schritt"}
+              />
+              {milestones.length > 1 && (
+                <button
+                  type="button"
+                  aria-label="Meilenstein entfernen"
+                  onClick={() => setMilestones((list) => list.filter((_, idx) => idx !== i))}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border border-line text-muted transition active:scale-[0.94]"
+                >
+                  <IconTrash size={15} />
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setMilestones((list) => [...list, ""])}
+            className="inline-flex items-center gap-1.5 rounded-[11px] border border-dashed border-line px-3 py-2 text-[13px] font-extrabold text-[color:var(--signal-text)] transition active:scale-[0.97]"
+          >
+            <IconPlus size={15} />
+            Meilenstein
+          </button>
+        </div>
       </Field>
       <div className="rounded-xl border border-line bg-surface p-3">
         <Field label="Kassenziel (€)" hint="Optionaler Planwert. Er erscheint separat in der Kasse.">
@@ -304,8 +337,54 @@ function CreateEventSheet({
       </Field>
       {listTitle.trim() && (
         <>
-          <Field label="Slots" hint={'Einer pro Zeile. Kapazität optional mit | dahinter, z. B. „8–10 Uhr | 3“.'}>
-            <Textarea value={slots} onChange={(e) => setSlots(e.target.value)} placeholder={"8–10 Uhr | 3\n10–12 Uhr | 3"} />
+          <Field label="Slots" hint="Zeitfenster oder Aufgabe. Max leer = unbegrenzt.">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--faint)]">
+                <span className="flex-1">Slot</span>
+                <span className="w-[64px] text-center">Max</span>
+                {slots.length > 1 && <span className="w-9" />}
+              </div>
+              {slots.map((s, i) => (
+                <div key={i} className="sp-in flex items-center gap-2">
+                  <Input
+                    value={s.label}
+                    onChange={(e) =>
+                      setSlots((list) => list.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))
+                    }
+                    placeholder="z. B. 8–10 Uhr"
+                  />
+                  <Input
+                    value={s.capacity}
+                    inputMode="numeric"
+                    onChange={(e) =>
+                      setSlots((list) =>
+                        list.map((x, idx) => (idx === i ? { ...x, capacity: e.target.value.replace(/[^0-9]/g, "") } : x))
+                      )
+                    }
+                    placeholder="∞"
+                    className="w-[64px] text-center"
+                  />
+                  {slots.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label="Slot entfernen"
+                      onClick={() => setSlots((list) => list.filter((_, idx) => idx !== i))}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border border-line text-muted transition active:scale-[0.94]"
+                    >
+                      <IconTrash size={15} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSlots((list) => [...list, { label: "", capacity: "" }])}
+                className="inline-flex items-center gap-1.5 rounded-[11px] border border-dashed border-line px-3 py-2 text-[13px] font-extrabold text-[color:var(--signal-text)] transition active:scale-[0.97]"
+              >
+                <IconPlus size={15} />
+                Slot
+              </button>
+            </div>
           </Field>
           <Field label="Wenn voll">
             <Select value={overflow} onChange={(e) => setOverflow(e.target.value)}>

@@ -7,6 +7,7 @@ import type { MyAssignedMilestone, MySignupTask, MyTasksData } from "@/lib/types
 import { Card, SkeletonList } from "@/components/ui";
 import { IconCalendar, IconCheck, IconClock, IconTarget, IconUser } from "@/components/icons";
 import { relativeDay } from "@/lib/format";
+import { useCountUp } from "@/lib/useCountUp";
 
 type TaskView = "open" | "signups" | "done";
 
@@ -32,6 +33,7 @@ export default function TasksPage() {
   const activeCount = counts.open + counts.signups;
   const totalCount = activeCount + counts.done;
   const completion = totalCount > 0 ? Math.round((counts.done / totalCount) * 100) : 100;
+  const animCompletion = useCountUp(completion);
   const focus = useMemo(() => {
     if (!data) return null;
     const milestone = data.open_milestones[0];
@@ -89,19 +91,19 @@ export default function TasksPage() {
               <div
                 className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full p-[5px]"
                 style={{
-                  background: `conic-gradient(var(--pop) ${completion * 3.6}deg, rgba(255,255,255,0.16) 0deg)`,
+                  background: `conic-gradient(var(--pop) ${animCompletion * 3.6}deg, rgba(255,255,255,0.16) 0deg)`,
                 }}
                 aria-label={`${completion}% erledigt`}
               >
                 <span className="flex h-full w-full items-center justify-center rounded-full bg-[color:var(--dark)] font-display text-[17px] font-black">
-                  {completion}
+                  {Math.round(animCompletion)}
                 </span>
               </div>
             </div>
 
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/12">
               <div
-                className="h-full rounded-full bg-[color:var(--pop)] transition-all duration-500"
+                className="sp-bar-grow h-full rounded-full bg-[color:var(--pop)] transition-all duration-500"
                 style={{ width: `${completion}%` }}
               />
             </div>
@@ -242,7 +244,7 @@ function TaskList({
     );
   }
 
-  return <div className="flex flex-col gap-3">{children}</div>;
+  return <div className="sp-stagger flex flex-col gap-3">{children}</div>;
 }
 
 function MilestoneTaskCard({ task, done = false }: { task: MyAssignedMilestone; done?: boolean }) {

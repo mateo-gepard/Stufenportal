@@ -66,7 +66,7 @@ export default function PollsPage() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-[14px]">
+      <div className="sp-stagger flex flex-col gap-[14px]">
         {polls?.map((p) => (
           <Link key={p.id} href={`/polls/${p.id}`} className="block">
             <VoteCard poll={p} />
@@ -110,7 +110,7 @@ function VoteCard({ poll }: { poll: PollListItem }) {
               Anonym
             </MetaChip>
           )}
-          {poll.voted && poll.status === "open" && <MetaChip tone="success">Erledigt</MetaChip>}
+          {poll.voted && poll.status === "open" && <MetaChip tone="success">Abgestimmt</MetaChip>}
         </div>
         <DeadlineBadge poll={poll} />
       </div>

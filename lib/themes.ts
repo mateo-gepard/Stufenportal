@@ -118,6 +118,14 @@ export function isColorThemeKey(value: string | null): value is ColorThemeKey {
   return value === "standard" || value === "tinte" || value === "beere" || value === "hain";
 }
 
+const DARK_PAPER = "#15140F";
+
+/** Hintergrundfarbe ("paper") des aktiven Themes – für die PWA-/Statusbar-Chrome. */
+export function paperColor(colorTheme: ColorThemeKey, mode: "light" | "dark"): string {
+  if (mode === "dark") return DARK_PAPER;
+  return (colorThemes[colorTheme] || colorThemes.standard).paper;
+}
+
 export function applyColorTheme(root: HTMLElement, colorTheme: ColorThemeKey, mode: "light" | "dark") {
   const theme = colorThemes[colorTheme] || colorThemes.standard;
   const set = (vars: Record<string, string>) => {
@@ -126,7 +134,7 @@ export function applyColorTheme(root: HTMLElement, colorTheme: ColorThemeKey, mo
 
   if (mode === "dark") {
     set({
-      "--paper": "#15140F",
+      "--paper": DARK_PAPER,
       "--card": "#1F1D17",
       "--soft": "#262219",
       "--ink": "#F2EFE6",
@@ -188,5 +196,7 @@ export function applyColorTheme(root: HTMLElement, colorTheme: ColorThemeKey, mo
     "--success": "var(--ok)",
     "--warning": "var(--warn)",
     "--danger": "var(--accent)",
+    "--danger-soft": "var(--accent-soft)",
+    "--focus-ring": "color-mix(in srgb, var(--accent) 55%, transparent)",
   });
 }

@@ -156,7 +156,7 @@ export default function MorePage() {
         <SettingRow
           icon={<IconUser size={19} />}
           title="Account"
-          subtitle={admin ? "Sprecher" : "Schueler"}
+          subtitle={admin ? "Sprecher" : "Schüler"}
           actionLabel="Logout"
           onAction={logout}
         />
@@ -235,7 +235,7 @@ export default function MorePage() {
               <IconUser size={19} />
             </span>
             <div>
-            <p className="font-medium">Schueler-Account</p>
+            <p className="font-medium">Schüler-Account</p>
             <p className="text-[12px] text-muted">Sprecherrechte werden direkt am Account vergeben.</p>
             </div>
           </div>
@@ -346,12 +346,12 @@ function SettingSwitch({
         role="switch"
         aria-checked={checked}
         onClick={onToggle}
-        className="relative h-7 w-12 shrink-0 rounded-full transition"
-        style={{ background: checked ? "var(--accent)" : "var(--line)" }}
+        className="inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200"
+        style={{ background: checked ? "var(--accent)" : "var(--surface-2)" }}
       >
         <span
-          className="absolute top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.3)] transition-[left]"
-          style={{ left: checked ? 23 : 3 }}
+          className="block h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.3)] transition-transform duration-200"
+          style={{ transform: checked ? "translateX(23px)" : "translateX(3px)" }}
         />
       </button>
     </div>

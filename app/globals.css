@@ -36,6 +36,8 @@
   --success: var(--ok);
   --warning: var(--warn);
   --danger: var(--accent);
+  --danger-soft: var(--accent-soft);
+  --focus-ring: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 :root[data-theme="dark"] {
@@ -60,10 +62,38 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Sichtbarer Fokusring nur für Tastatur-Navigation – app-weit, ohne den
+   Maus-/Touch-Look zu stören. Hebt Barrierefreiheit überall auf einmal. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--text);
+}
+
 html,
 body {
   background: var(--bg);
   color: var(--text);
+  accent-color: var(--accent);
+}
+
+/* Respektiert das System: keine Bewegung, wenn der Nutzer sie reduziert. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {
@@ -107,6 +137,73 @@ body {
 }
 .sp-sheet {
   animation: sp-sheet 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Listen treten gestaffelt ein – ruhiger, „teurer" Eindruck. */
+.sp-stagger > * {
+  animation: sp-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sp-stagger > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.sp-stagger > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.sp-stagger > *:nth-child(4) {
+  animation-delay: 135ms;
+}
+.sp-stagger > *:nth-child(5) {
+  animation-delay: 180ms;
+}
+.sp-stagger > *:nth-child(6) {
+  animation-delay: 225ms;
+}
+.sp-stagger > *:nth-child(7) {
+  animation-delay: 270ms;
+}
+.sp-stagger > *:nth-child(n + 8) {
+  animation-delay: 310ms;
+}
+
+/* Balken wachsen aus der linken Kante – für Fortschritt/Ranking/Ergebnisse. */
+@keyframes sp-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.sp-bar-grow {
+  transform-origin: left center;
+  animation: sp-bar 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes sp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.sp-fade-in {
+  animation: sp-fade 600ms ease both;
+}
+
+/* Linie zeichnet sich ein (pathLength=1 + dash-offset). */
+@keyframes sp-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.sp-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sp-draw 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes sp-skeleton {

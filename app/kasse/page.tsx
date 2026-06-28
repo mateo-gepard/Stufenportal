@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { EventGoal, LedgerEntry } from "@/lib/types";
 import { Card, Skeleton, BottomSheet, Button, AdminDots, SheetAction } from "@/components/ui";
+import { TrendArea } from "@/components/charts";
 import { Field, Input, Select } from "@/components/form";
 import { IconArrowDown, IconArrowUp, IconChart, IconPlus, IconTarget, IconTrash } from "@/components/icons";
 import { money, date, relativeDay } from "@/lib/format";
+import { useCountUp } from "@/lib/useCountUp";
 
 interface LedgerData {
   entries: LedgerEntry[];
@@ -29,6 +31,22 @@ export default function KassePage() {
     api<LedgerData>("/api/ledger").then(setData).catch(() => {});
   }, []);
   useEffect(load, [load]);
+
+  // Laufender Kassenstand nach jeder Buchung (chronologisch) — als Verlauf.
+  const trend = useMemo(() => {
+    if (!data || data.entries.length < 2) return null;
+    const sorted = [...data.entries].sort(
+      (a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+    );
+    let bal = 0;
+    const values = sorted.map((e) => {
+      bal += e.kind === "income" ? e.amount : -e.amount;
+      return bal / 100;
+    });
+    return { values, since: sorted[0].occurred_at };
+  }, [data]);
+
+  const animBalance = useCountUp(data?.balance ?? 0);
 
   async function del(id: string) {
     await api(`/api/ledger/${id}`, { method: "DELETE" });
@@ -56,12 +74,21 @@ export default function KassePage() {
       ) : (
         <div className="mb-5 space-y-3">
           <div className="overflow-hidden rounded-[26px] bg-[color:var(--dark)] p-5 text-white shadow-[6px_6px_0_color-mix(in_srgb,var(--ink)_16%,transparent)]">
-            <div className="mb-5">
+            <div className={trend ? "mb-3" : "mb-5"}>
               <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/55">Kassenstand</p>
               <p className="tabular font-display text-[46px] font-black leading-none" style={{ color: data.balance >= 0 ? "white" : "var(--pop)" }}>
-                {money(data.balance)}
+                {money(Math.round(animBalance))}
               </p>
             </div>
+            {trend && (
+              <div className="mb-4">
+                <TrendArea values={trend.values} stroke="var(--pop)" fill="var(--pop)" baseline={0} className="text-white/60" />
+                <div className="mt-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-white/45">
+                  <span>seit {date(trend.since)}</span>
+                  <span>heute</span>
+                </div>
+              </div>
+            )}
             <FinanceSplit income={data.income} expense={data.expense} />
             <div className="mt-4 grid grid-cols-2 gap-2">
               <MoneyStat icon={<IconArrowDown size={15} />} label="Einnahmen" value={data.income} tone="success" />
@@ -104,7 +131,7 @@ export default function KassePage() {
       )}
 
       <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">Kassenbuch</h2>
-      <div className="flex flex-col gap-2.5">
+      <div className="sp-stagger flex flex-col gap-2.5">
         {data?.entries.map((e) => (
           <div key={e.id} className="flex items-center gap-3 rounded-[16px] border border-line bg-surface px-3.5 py-3">
             <span
@@ -191,8 +218,8 @@ function FinanceSplit({ income, expense }: { income: number; expense: number }) 
         <span>Raus</span>
       </div>
       <div className="flex h-3 overflow-hidden rounded-full bg-white/10">
-        <div style={{ width: `${incomePct}%`, background: "var(--ok)" }} />
-        <div style={{ width: `${expensePct}%`, background: "var(--accent)" }} />
+        <div className="sp-bar-grow" style={{ width: `${incomePct}%`, background: "var(--ok)" }} />
+        <div className="sp-bar-grow" style={{ width: `${expensePct}%`, background: "var(--accent)" }} />
       </div>
     </div>
   );

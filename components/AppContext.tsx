@@ -2,7 +2,18 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api, getDeviceId } from "@/lib/client";
-import { applyColorTheme, isColorThemeKey, type ColorThemeKey } from "@/lib/themes";
+import { applyColorTheme, isColorThemeKey, paperColor, type ColorThemeKey } from "@/lib/themes";
+
+function setThemeColorMeta(color: string) {
+  if (typeof document === "undefined") return;
+  let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", color);
+}
 
 export interface AppUser {
   id: string;
@@ -49,7 +60,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTheme(saved);
     if (isColorThemeKey(savedColorTheme)) setColorThemeState(savedColorTheme);
     document.documentElement.setAttribute("data-theme", saved);
-    applyColorTheme(document.documentElement, isColorThemeKey(savedColorTheme) ? savedColorTheme : "standard", saved);
+    const activeColorTheme = isColorThemeKey(savedColorTheme) ? savedColorTheme : "standard";
+    applyColorTheme(document.documentElement, activeColorTheme, saved);
+    setThemeColorMeta(paperColor(activeColorTheme, saved));
     (api("/api/auth/me") as Promise<{ user: AppUser | null; speaker: boolean }>)
       .then((d) => {
         setUser(d.user);
@@ -84,6 +97,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("sp_theme", next);
       document.documentElement.setAttribute("data-theme", next);
       applyColorTheme(document.documentElement, colorTheme, next);
+      setThemeColorMeta(paperColor(colorTheme, next));
       return next;
     });
   }, [colorTheme]);
@@ -92,6 +106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("sp_color_theme", next);
     setColorThemeState(next);
     applyColorTheme(document.documentElement, next, theme);
+    setThemeColorMeta(paperColor(next, theme));
   }, [theme]);
 
   return (

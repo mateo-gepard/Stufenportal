@@ -295,7 +295,7 @@ function ResultRow({ poll, row, rank }: { poll: PollDetail; row: PollResultRow; 
       </div>
       <div className="h-[10px] overflow-hidden rounded-full bg-[color:var(--surface-2)]">
         <div
-          className="h-full rounded-full transition-all"
+          className="sp-bar-grow h-full rounded-full transition-all"
           style={{
             width: `${Math.min(100, row.pct)}%`,
             background: isFirst ? "var(--accent)" : "var(--dark)",

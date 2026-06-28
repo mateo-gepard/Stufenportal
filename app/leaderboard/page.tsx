@@ -43,7 +43,7 @@ export default function LeaderboardPage() {
             Aktuell ist niemand sichtbar.
             <br />
             <Link href="/more" className="mt-2 inline-block text-signal-text">
-              Sichtbarkeit in „Mehr" prüfen
+              Sichtbarkeit in „Mehr“ prüfen
             </Link>
           </p>
         </Card>
@@ -53,9 +53,11 @@ export default function LeaderboardPage() {
         <LeaderboardPodium board={board} />
       )}
 
-      <div className="divide-y divide-line">
+      {board && <YourPosition board={board} />}
+
+      <div className="sp-stagger divide-y divide-line">
         {board?.slice(3).map((row) => (
-          <LeaderboardListRow key={row.rank + row.name} row={row} />
+          <LeaderboardListRow key={row.rank + row.name} row={row} topPoints={board[0]?.points ?? 0} />
         ))}
       </div>
 
@@ -72,7 +74,7 @@ function podiumSlots(board: LeaderboardRow[]) {
 function LeaderboardPodium({ board }: { board: LeaderboardRow[] }) {
   return (
     <section className="mb-[28px]">
-      <div className="grid min-h-[244px] grid-cols-3 items-end gap-2">
+      <div className="sp-stagger grid min-h-[244px] grid-cols-3 items-end gap-2">
         {podiumSlots(board).map((row, index) => (
           <PodiumSpot key={row ? row.rank + row.name : `empty-${index}`} row={row} visualSlot={index} />
         ))}
@@ -116,7 +118,33 @@ function PodiumSpot({ row, visualSlot }: { row: LeaderboardRow | null; visualSlo
   );
 }
 
-function LeaderboardListRow({ row }: { row: LeaderboardRow }) {
+function YourPosition({ board }: { board: LeaderboardRow[] }) {
+  const me = board.find((row) => row.mine);
+  // Auf dem Podium ist die eigene Position schon sichtbar.
+  if (!me || me.rank <= 3) return null;
+  const ahead = board[me.rank - 2];
+  const gap = ahead ? ahead.points - me.points : 0;
+  const gapText =
+    gap <= 0
+      ? `Gleichauf mit Platz ${me.rank - 1}`
+      : `${gap} ${gap === 1 ? "Punkt" : "Punkte"} bis Platz ${me.rank - 1}`;
+  return (
+    <div className="mb-5 flex items-center gap-3 rounded-[18px] border-2 border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-4 py-3">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--accent)] bg-surface font-display text-[15px] font-black text-[color:var(--accent)]">
+        {initials(me.name)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[color:var(--accent)]">Deine Position</p>
+        <p className="font-display text-[20px] font-black leading-tight">Platz {me.rank}</p>
+        <p className="text-[12px] font-semibold text-muted">{gapText}</p>
+      </div>
+      <span className="tabular shrink-0 font-display text-[26px] font-black">{me.points}</span>
+    </div>
+  );
+}
+
+function LeaderboardListRow({ row, topPoints }: { row: LeaderboardRow; topPoints: number }) {
+  const barPct = topPoints > 0 ? Math.max(2, Math.round((row.points / topPoints) * 100)) : 0;
   return (
     <div
       className="flex min-h-[66px] items-center gap-3 py-3"
@@ -128,7 +156,15 @@ function LeaderboardListRow({ row }: { row: LeaderboardRow }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-display text-[19px] font-black leading-tight">{row.name}</span>
-        {row.mine && <span className="block text-[12px] font-semibold text-muted">Du</span>}
+        <span className="mt-1.5 flex items-center gap-2">
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--surface-2)]">
+            <span
+              className="sp-bar-grow block h-full rounded-full"
+              style={{ width: `${barPct}%`, background: row.mine ? "var(--accent)" : "var(--dark)" }}
+            />
+          </span>
+          {row.mine && <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--accent)]">Du</span>}
+        </span>
       </span>
       <span className="tabular font-display text-[22px] font-black">{row.points}</span>
     </div>
@@ -184,7 +220,7 @@ function AwardSheet({ open, onClose, onDone }: { open: boolean; onClose: () => v
     <BottomSheet open={open} onClose={onClose} title="Punkte vergeben">
       {members.length === 0 ? (
         <p className="py-4 text-small text-muted">
-          Noch keine Accounts gefunden. Fuehre zuerst das Account-Seeding aus.
+          Noch keine Accounts gefunden. Führe zuerst das Account-Seeding aus.
         </p>
       ) : (
         <>

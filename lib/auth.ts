@@ -130,7 +130,7 @@ export async function requireUser(): Promise<AuthUser | NextResponse> {
 export async function requireSpeaker(): Promise<NextResponse | null> {
   const user = await currentUser();
   if (user?.role !== "sprecher") {
-    return NextResponse.json({ error: "Nur fuer Sprecher." }, { status: 403 });
+    return NextResponse.json({ error: "Nur für Sprecher." }, { status: 403 });
   }
   return null;
 }

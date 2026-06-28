@@ -89,9 +89,9 @@ export default function AdminPage() {
     return (
       <div className="sp-in pt-10 text-center text-muted">
         <IconLock size={26} className="mx-auto mb-2" />
-        <p>Nur fuer Sprecher-Accounts.</p>
+        <p>Nur für Sprecher-Accounts.</p>
         <Link href="/more" className="mt-3 inline-flex items-center justify-center gap-1 text-signal-text">
-          Zurueck zu Mehr
+          Zurück zu Mehr
           <IconChevronRight size={15} />
         </Link>
       </div>
@@ -118,7 +118,7 @@ export default function AdminPage() {
         {!accounts ? (
           <SkeletonList rows={1} />
         ) : accounts.length === 0 ? (
-          <p className="text-small text-muted">Noch keine Accounts. Fuehre `npm run seed:accounts` aus.</p>
+          <p className="text-small text-muted">Noch keine Accounts. Führe `npm run seed:accounts` aus.</p>
         ) : (
           <div className="space-y-3">
             <Select value={resetId} onChange={(e) => setResetId(e.target.value)}>
@@ -133,7 +133,7 @@ export default function AdminPage() {
             </Button>
             {resetResult && (
               <div className="rounded-[14px] bg-[color:var(--soft)] p-3">
-                <p className="text-[12px] font-bold text-muted">Neues Passwort fuer {resetResult.display_name}</p>
+                <p className="text-[12px] font-bold text-muted">Neues Passwort für {resetResult.display_name}</p>
                 <p className="mt-1 font-display text-[28px] font-black tracking-[0.12em]">{resetResult.password}</p>
               </div>
             )}

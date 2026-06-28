@@ -15,7 +15,7 @@ function clientIp(req: Request): string {
 
 function lockedResponse(retryAfter: number): NextResponse {
   const res = NextResponse.json(
-    { error: "Zu viele Versuche. Bitte spaeter erneut probieren." },
+    { error: "Zu viele Versuche. Bitte später erneut probieren." },
     { status: 429 }
   );
   res.headers.set("Retry-After", String(retryAfter));
