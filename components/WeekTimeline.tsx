@@ -47,18 +47,27 @@ function dayLabel(day: TimelineDay): string {
   return formatAppDate((appDayIndex(Date.now()) + day.i) * 864e5, { weekday: "long", day: "numeric", month: "long" });
 }
 
-export default function WeekTimeline({ events, polls }: { events: EventSummary[]; polls: TimelinePoll[] }) {
+export default function WeekTimeline({
+  events,
+  polls,
+  embedded = false,
+}: {
+  events: EventSummary[];
+  polls: TimelinePoll[];
+  embedded?: boolean;
+}) {
   const days = useMemo(() => buildDays(events, polls), [events, polls]);
   // Heute zeigt Orientierung; ist heute leer, öffne den nächsten Tag mit Inhalt.
   const initial = days[0].items.length > 0 ? 0 : Math.max(0, days.findIndex((d) => d.items.length > 0));
   const [selected, setSelected] = useState(initial);
-  if (!days.some((d) => d.items.length > 0)) return null;
+  // Standalone blendet sich bei leerer Woche aus; eingebettet (per Toggle) zeigt es den Leerzustand.
+  if (!embedded && !days.some((d) => d.items.length > 0)) return null;
   const active = days[selected];
 
   return (
-    <section className="mt-[30px]">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-display text-[18px] font-extrabold">Diese Woche</h2>
+    <section className={embedded ? "" : "mt-[30px]"}>
+      <div className={`mb-3 flex items-center ${embedded ? "justify-end" : "justify-between"}`}>
+        {!embedded && <h2 className="font-display text-[18px] font-extrabold">Diese Woche</h2>}
         <div className="flex items-center gap-3 text-[10.5px] font-bold text-muted">
           <Legend color={EVENT_COLOR} label="Events" />
           <Legend color={POLL_COLOR} label="Fristen" />

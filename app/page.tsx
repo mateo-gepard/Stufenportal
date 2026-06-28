@@ -16,6 +16,7 @@ export default function TodayPage() {
   const { user } = useApp();
   const [data, setData] = useState<TodayDigest | null>(null);
   const [err, setErr] = useState("");
+  const [homeView, setHomeView] = useState<"heute" | "woche">("heute");
 
   useEffect(() => {
     const load = () => api<TodayDigest>("/api/today").then(setData).catch(() => {});
@@ -64,22 +65,37 @@ export default function TodayPage() {
             </h1>
           </header>
 
-          <div className="sp-hero-dark relative mt-5 overflow-hidden rounded-[22px] px-1 py-[18px]">
-            <div className="sp-half absolute -right-3 -top-3 h-[90px] w-[90px] text-white/15" />
-            <div className="absolute left-[18px] top-3.5 text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-50">Die Lage heute</div>
-            <div className="mt-6 flex">
-              <KpiLink href="/polls" value={data.openPolls.length} label="offene Votes" pop />
-              <Divider />
-              <KpiLink href="/events" value={data.upcoming.length} label="Events bald" />
-              <Divider />
-              <div className="flex flex-1 flex-col items-center gap-1 text-center">
-                <CountUpText value={data.urgent.length} className="font-display text-[42px] font-extrabold leading-[0.9] text-[color:var(--accent)]" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">dringend</span>
-              </div>
+          <div className="mt-5">
+            <div className="grid grid-cols-2 gap-1 rounded-[15px] border border-line bg-surface p-1">
+              <HomeToggleButton active={homeView === "heute"} onClick={() => setHomeView("heute")}>
+                Heute
+              </HomeToggleButton>
+              <HomeToggleButton active={homeView === "woche"} onClick={() => setHomeView("woche")}>
+                Diese Woche
+              </HomeToggleButton>
             </div>
-          </div>
 
-          <WeekTimeline events={data.upcoming} polls={data.openPolls} />
+            {homeView === "heute" ? (
+              <div className="sp-in sp-hero-dark relative mt-3 overflow-hidden rounded-[22px] px-1 py-[18px]">
+                <div className="sp-half absolute -right-3 -top-3 h-[90px] w-[90px] text-white/15" />
+                <div className="absolute left-[18px] top-3.5 text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-50">Die Lage heute</div>
+                <div className="mt-6 flex">
+                  <KpiLink href="/polls" value={data.openPolls.length} label="offene Votes" pop />
+                  <Divider />
+                  <KpiLink href="/events" value={data.upcoming.length} label="Events bald" />
+                  <Divider />
+                  <div className="flex flex-1 flex-col items-center gap-1 text-center">
+                    <CountUpText value={data.urgent.length} className="font-display text-[42px] font-extrabold leading-[0.9] text-[color:var(--accent)]" />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.04em] opacity-75">dringend</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="sp-in mt-3">
+                <WeekTimeline events={data.upcoming} polls={data.openPolls} embedded />
+              </div>
+            )}
+          </div>
 
           {data.featuredNews.length > 0 && (
             <section className="mt-[30px]">
@@ -187,6 +203,31 @@ function KpiLink({ href, value, label, pop }: { href: string; value: number; lab
 function CountUpText({ value, className }: { value: number; className?: string }) {
   const n = useCountUp(value);
   return <span className={className}>{Math.round(n)}</span>;
+}
+
+function HomeToggleButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="min-h-[40px] rounded-[12px] text-[13px] font-extrabold transition active:scale-[0.98]"
+      style={{
+        background: active ? "var(--ink)" : "transparent",
+        color: active ? "var(--paper)" : "var(--text-muted)",
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 function urgentHref(item: TodayDigest["urgent"][number]): string {
