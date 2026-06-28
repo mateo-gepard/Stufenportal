@@ -284,6 +284,7 @@ Sprecher-Funktionen:
 - Status aendern
 - Meilensteine erstellen und abhaken
 - Meilensteine/Aufgaben per Account-Suche mehreren Personen zuordnen
+- Aufgaben einen Punktwert geben; beim Abhaken werden die Punkte automatisch und einmalig an alle Zugeordneten vergeben
 - Listen und Slots verwalten
 - Event loeschen bzw. in Papierkorb legen
 

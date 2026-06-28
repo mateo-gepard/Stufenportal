@@ -33,6 +33,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const [accounts, setAccounts] = useState<MemberRow[]>([]);
   const [assignFor, setAssignFor] = useState<Milestone | null>(null);
   const [assignIds, setAssignIds] = useState<string[]>([]);
+  const [assignPoints, setAssignPoints] = useState("0");
   const [newMs, setNewMs] = useState("");
 
   const load = useCallback(() => {
@@ -55,7 +56,9 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
   function openAssign(milestone: Milestone) {
     setAssignFor(milestone);
-    setAssignIds(idsForAssignee(milestone.assignee));
+    // Verlaessliche Zuordnung bevorzugen; Namen nur als Legacy-Fallback auflösen.
+    setAssignIds(milestone.assignee_ids.length ? milestone.assignee_ids : idsForAssignee(milestone.assignee));
+    setAssignPoints(milestone.points ? String(milestone.points) : "0");
   }
 
   async function toggleMs(mid: string, done: boolean) {
@@ -68,7 +71,12 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
           }
         : prev
     );
-    await api(`/api/milestones/${mid}`, { method: "PATCH", body: { done: !done } }).catch(load);
+    // Neu laden, damit der "vergeben"-Status (Punkte) sichtbar wird.
+    try {
+      await api(`/api/milestones/${mid}`, { method: "PATCH", body: { done: !done } });
+    } finally {
+      load();
+    }
   }
 
   async function addMs() {
@@ -80,9 +88,9 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
   async function saveAssignment() {
     if (!assignFor) return;
-    const byId = new Map(accounts.map((account) => [account.user_id, account.name]));
-    const assignee = assignIds.map((id) => byId.get(id)).filter(Boolean).join(", ");
-    await api(`/api/milestones/${assignFor.id}`, { method: "PATCH", body: { assignee } });
+    const points = Math.max(0, parseInt(assignPoints, 10) || 0);
+    // Server leitet die Anzeigenamen aus assignee_ids ab — IDs sind die Quelle der Wahrheit.
+    await api(`/api/milestones/${assignFor.id}`, { method: "PATCH", body: { assignee_ids: assignIds, points } });
     setAssignFor(null);
     setAssignIds([]);
     load();
@@ -194,6 +202,15 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                     {m.due_at ? relativeDay(m.due_at) : ""}
                   </p>
                 )}
+                {m.points > 0 && (
+                  <span
+                    className="mt-1 inline-flex items-center gap-1 rounded-md bg-[color:var(--pop-soft)] px-2 py-0.5 text-[11px] font-extrabold text-[color:var(--ink)]"
+                    title={m.points_awarded ? "Punkte wurden vergeben" : "Punkte werden beim Abhaken vergeben"}
+                  >
+                    {m.points_awarded && <IconCheck size={11} strokeWidth={3} />}
+                    +{m.points} Pkt{m.points_awarded ? " vergeben" : ""}
+                  </span>
+                )}
               </div>
               {admin && (
                 <button
@@ -292,6 +309,22 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
               placeholder="Namen suchen"
               emptyText="Keine Accounts gefunden."
             />
+            <Field
+              label="Punkte bei Erledigung"
+              hint="0 = keine Punkte. Werden beim Abhaken automatisch an die Zugeordneten vergeben."
+            >
+              <Input
+                inputMode="numeric"
+                value={assignPoints}
+                onChange={(e) => setAssignPoints(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="0"
+              />
+            </Field>
+            {assignFor.points_awarded && (
+              <p className="text-[12px] text-muted">
+                Für diese Aufgabe wurden bereits Punkte vergeben. Eine Änderung vergibt sie nicht erneut.
+              </p>
+            )}
             <div className="flex gap-2">
               <Button onClick={() => setAssignIds([])} variant="surface">
                 Leeren

@@ -11,6 +11,9 @@ export interface Milestone {
   title: string;
   done: boolean;
   assignee: string | null;
+  assignee_ids: string[];
+  points: number;
+  points_awarded: boolean;
   due_at: string | null;
   ord: number;
 }
@@ -182,6 +185,7 @@ export interface MyAssignedMilestone {
   title: string;
   done: boolean;
   assignee: string | null;
+  points: number;
   due_at: string | null;
   event_id: string;
   event_title: string;

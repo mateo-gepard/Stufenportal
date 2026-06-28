@@ -282,9 +282,18 @@ function MilestoneTaskCard({ task, done = false }: { task: MyAssignedMilestone; 
                 <span className="shrink-0 text-[12px] font-bold text-muted">{dateLabel}</span>
               </div>
               <h2 className="font-display text-[20px] font-black leading-tight">{task.title}</h2>
-              <div className="mt-3 flex items-center gap-2 text-[12.5px] font-bold text-muted">
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] font-bold text-muted">
                 <IconCalendar size={14} />
                 <span className="truncate">{task.event_title}</span>
+                {task.points > 0 && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md bg-[color:var(--pop-soft)] px-2 py-0.5 text-[11px] font-extrabold text-[color:var(--ink)]"
+                    title={done ? "Punkte für diese Aufgabe" : "Punkte, wenn die Aufgabe abgehakt wird"}
+                  >
+                    {done ? <IconCheck size={11} strokeWidth={3} /> : <IconTarget size={11} />}
+                    +{task.points} Pkt
+                  </span>
+                )}
               </div>
               {task.assignee && (
                 <div className="mt-2 flex items-start gap-2 text-[12px] text-muted">

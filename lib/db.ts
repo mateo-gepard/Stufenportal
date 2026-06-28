@@ -132,14 +132,17 @@ async function migrate(): Promise<void> {
     );
 
     CREATE TABLE IF NOT EXISTS milestones (
-      id         TEXT PRIMARY KEY,
-      event_id   TEXT NOT NULL,
-      title      TEXT NOT NULL,
-      done       INTEGER NOT NULL DEFAULT 0,
-      assignee   TEXT,
-      due_at     TEXT,
-      ord        INTEGER NOT NULL DEFAULT 0,
-      deleted_at TEXT
+      id                TEXT PRIMARY KEY,
+      event_id          TEXT NOT NULL,
+      title             TEXT NOT NULL,
+      done              INTEGER NOT NULL DEFAULT 0,
+      assignee          TEXT,
+      assignee_ids      TEXT,
+      points            INTEGER NOT NULL DEFAULT 0,
+      points_awarded_at TEXT,
+      due_at            TEXT,
+      ord               INTEGER NOT NULL DEFAULT 0,
+      deleted_at        TEXT
     );
 
     CREATE TABLE IF NOT EXISTS signup_lists (
@@ -350,6 +353,9 @@ async function migrate(): Promise<void> {
   await addColumnIfMissing("comments", "user_id", "TEXT");
   await addColumnIfMissing("abizeitung_entries", "user_id", "TEXT");
   await addColumnIfMissing("point_events", "user_id", "TEXT");
+  await addColumnIfMissing("milestones", "assignee_ids", "TEXT");
+  await addColumnIfMissing("milestones", "points", "INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("milestones", "points_awarded_at", "TEXT");
   await addColumnIfMissing("polls", "rank_limit", "INTEGER");
   await addColumnIfMissing("polls", "ranked_veto_enabled", "INTEGER NOT NULL DEFAULT 0");
   await addColumnIfMissing("events", "money_goal_cents", "INTEGER");

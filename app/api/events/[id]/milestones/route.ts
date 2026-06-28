@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { newId, readJson, trimmed, str } from "@/lib/util";
+import { clampPoints, resolveAssignees } from "@/lib/milestones";
 
 export const runtime = "nodejs";
 
@@ -21,8 +22,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     .get<{ m: number | null }>(params.id);
   const ord = (maxRow?.m ?? -1) + 1;
   const id = newId();
+  const points = clampPoints(body.points);
+  const { ids, names } = await resolveAssignees(body.assignee_ids);
+  const assignee = names || str(body.assignee) || null;
+  const assigneeIds = ids.length ? ids.join(",") : null;
   await db
-    .prepare("INSERT INTO milestones (id,event_id,title,done,assignee,due_at,ord) VALUES (?,?,?,0,?,?,?)")
-    .run(id, params.id, title, str(body.assignee) || null, str(body.due_at) || null, ord);
+    .prepare("INSERT INTO milestones (id,event_id,title,done,assignee,assignee_ids,points,due_at,ord) VALUES (?,?,?,0,?,?,?,?,?)")
+    .run(id, params.id, title, assignee, assigneeIds, points, str(body.due_at) || null, ord);
   return NextResponse.json({ id }, { status: 201 });
 }

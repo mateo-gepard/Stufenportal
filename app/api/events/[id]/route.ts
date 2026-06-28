@@ -30,10 +30,20 @@ async function buildEventDetail(eventId: string, device: string | null, userId: 
   const milestones = (
     await db
       .prepare(
-        "SELECT id,title,done,assignee,due_at,ord FROM milestones WHERE event_id = ? AND deleted_at IS NULL ORDER BY ord"
+        "SELECT id,title,done,assignee,assignee_ids,points,points_awarded_at,due_at,ord FROM milestones WHERE event_id = ? AND deleted_at IS NULL ORDER BY ord"
       )
       .all<any>(eventId)
-  ).map((m: any) => ({ ...m, done: !!m.done }));
+  ).map((m: any) => ({
+    id: m.id,
+    title: m.title,
+    done: !!m.done,
+    assignee: m.assignee,
+    assignee_ids: (m.assignee_ids || "").split(",").map((s: string) => s.trim()).filter(Boolean),
+    points: m.points ?? 0,
+    points_awarded: !!m.points_awarded_at,
+    due_at: m.due_at,
+    ord: m.ord,
+  }));
 
   const lists = await db
     .prepare("SELECT id,title,overflow FROM signup_lists WHERE event_id = ? AND deleted_at IS NULL ORDER BY ord")

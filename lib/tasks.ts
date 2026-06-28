@@ -34,23 +34,41 @@ export async function getMyTasks(user: AuthUser): Promise<MyTasksData> {
   const now = nowIso();
   const rawMilestones = await db
     .prepare(
-      `SELECT m.id, m.title, m.done, m.assignee, m.due_at,
+      `SELECT m.id, m.title, m.done, m.assignee, m.assignee_ids, m.points, m.due_at,
               e.id AS event_id, e.title AS event_title, e.start_at AS event_start_at, e.status AS event_status
        FROM milestones m
        JOIN events e ON e.id = m.event_id
        WHERE m.deleted_at IS NULL
          AND e.deleted_at IS NULL
          AND e.status NOT IN ('idea','done','cancelled')
-         AND m.assignee IS NOT NULL
-         AND TRIM(m.assignee) != ''
+         AND (
+           (m.assignee_ids IS NOT NULL AND TRIM(m.assignee_ids) != '')
+           OR (m.assignee IS NOT NULL AND TRIM(m.assignee) != '')
+         )
          AND (COALESCE(e.end_at, e.start_at) IS NULL OR COALESCE(e.end_at, e.start_at) >= ?)
        ORDER BY m.done ASC, (m.due_at IS NULL), COALESCE(m.due_at, e.start_at, e.created_at) ASC`
     )
-    .all<MyAssignedMilestone>(now);
+    .all<MyAssignedMilestone & { assignee_ids: string | null }>(now);
 
   const milestones = rawMilestones
-    .filter((task) => assigneeMatchesUser(task.assignee, [user.display_name, user.sort_name]))
-    .map((task) => ({ ...task, done: !!task.done }));
+    .filter((task) => {
+      // Bevorzugt ueber die verlaessliche Account-Zuordnung; Name nur als Legacy-Fallback.
+      const ids = (task.assignee_ids || "").split(",").map((s) => s.trim()).filter(Boolean);
+      if (ids.length) return ids.includes(user.id);
+      return assigneeMatchesUser(task.assignee, [user.display_name, user.sort_name]);
+    })
+    .map((task) => ({
+      id: task.id,
+      title: task.title,
+      done: !!task.done,
+      assignee: task.assignee,
+      points: task.points ?? 0,
+      due_at: task.due_at,
+      event_id: task.event_id,
+      event_title: task.event_title,
+      event_start_at: task.event_start_at,
+      event_status: task.event_status,
+    }));
 
   const signups = await db
     .prepare(
