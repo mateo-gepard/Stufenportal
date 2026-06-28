@@ -65,21 +65,16 @@ export default function TodayPage() {
             </h1>
           </header>
 
-          <div className="mt-5">
-            <div className="grid grid-cols-2 gap-1 rounded-[15px] border border-line bg-surface p-1">
-              <HomeToggleButton active={homeView === "heute"} onClick={() => setHomeView("heute")}>
-                Heute
-              </HomeToggleButton>
-              <HomeToggleButton active={homeView === "woche"} onClick={() => setHomeView("woche")}>
-                Diese Woche
-              </HomeToggleButton>
+          <div className="relative mt-5">
+            <div className="absolute right-0 top-0 z-20">
+              <HomeViewSwitch view={homeView} onChange={setHomeView} />
             </div>
 
             {homeView === "heute" ? (
-              <div className="sp-in sp-hero-dark relative mt-3 overflow-hidden rounded-[22px] px-1 py-[18px]">
+              <div className="sp-in sp-hero-dark relative overflow-hidden rounded-[22px] px-1 py-[18px]">
                 <div className="sp-half absolute -right-3 -top-3 h-[90px] w-[90px] text-white/15" />
                 <div className="absolute left-[18px] top-3.5 text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-50">Die Lage heute</div>
-                <div className="mt-6 flex">
+                <div className="mt-8 flex">
                   <KpiLink href="/polls" value={data.openPolls.length} label="offene Votes" pop />
                   <Divider />
                   <KpiLink href="/events" value={data.upcoming.length} label="Events bald" />
@@ -91,7 +86,7 @@ export default function TodayPage() {
                 </div>
               </div>
             ) : (
-              <div className="sp-in mt-3">
+              <div className="sp-in pt-9">
                 <WeekTimeline events={data.upcoming} polls={data.openPolls} embedded />
               </div>
             )}
@@ -205,28 +200,46 @@ function CountUpText({ value, className }: { value: number; className?: string }
   return <span className={className}>{Math.round(n)}</span>;
 }
 
-function HomeToggleButton({
-  active,
-  onClick,
-  children,
+// Kompakter Schalter in der Widget-Ecke: wechselt zwischen Tages- und Wochenblick.
+// Eigener Paper-Hintergrund, damit er sowohl auf der dunklen Heute-Kachel als auch
+// über der hellen Wochen-Timeline lesbar bleibt.
+function HomeViewSwitch({
+  view,
+  onChange,
 }: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  view: "heute" | "woche";
+  onChange: (v: "heute" | "woche") => void;
 }) {
+  const opts: { v: "heute" | "woche"; label: string }[] = [
+    { v: "heute", label: "Heute" },
+    { v: "woche", label: "Woche" },
+  ];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="min-h-[40px] rounded-[12px] text-[13px] font-extrabold transition active:scale-[0.98]"
-      style={{
-        background: active ? "var(--ink)" : "transparent",
-        color: active ? "var(--paper)" : "var(--text-muted)",
-      }}
+    <div
+      role="tablist"
+      aria-label="Zeitraum"
+      className="inline-flex items-center gap-0.5 rounded-full border-2 border-[color:var(--ink)] bg-[color:var(--paper)] p-0.5 shadow-[2px_2px_0_var(--ink)]"
     >
-      {children}
-    </button>
+      {opts.map((o) => {
+        const active = o.v === view;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.v)}
+            className="rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.04em] transition active:scale-[0.96]"
+            style={{
+              background: active ? "var(--ink)" : "transparent",
+              color: active ? "var(--paper)" : "var(--text-muted)",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
