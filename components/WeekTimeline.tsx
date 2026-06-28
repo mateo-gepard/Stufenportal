@@ -11,7 +11,8 @@ type TimelinePoll = { id: string; question: string; closes_at: string | null };
 type TimelineItem = { kind: "event" | "poll"; id: string; title: string; time: string; at: number };
 type TimelineDay = { i: number; weekday: string; day: string; items: TimelineItem[] };
 
-const EVENT_COLOR = "var(--info)";
+// Auf der dunklen Karte: Gold für Events, Rot für Fristen (beide gut lesbar auf Teal).
+const EVENT_COLOR = "var(--pop)";
 const POLL_COLOR = "var(--accent)";
 
 function buildDays(events: EventSummary[], polls: TimelinePoll[]): TimelineDay[] {
@@ -65,21 +66,18 @@ export default function WeekTimeline({
   const active = days[selected];
 
   return (
-    <section className={embedded ? "" : "mt-[30px]"}>
-      <div className={`mb-3 flex items-center ${embedded ? "justify-end" : "justify-between"}`}>
-        {!embedded && <h2 className="font-display text-[18px] font-extrabold">Diese Woche</h2>}
-        <div className="flex items-center gap-3 text-[10.5px] font-bold text-muted">
-          <Legend color={EVENT_COLOR} label="Events" />
-          <Legend color={POLL_COLOR} label="Fristen" />
-        </div>
-      </div>
+    <div className="sp-hero-dark relative overflow-hidden rounded-[22px] px-4 py-[18px]">
+      <div className="sp-half absolute -right-3 -top-3 h-[90px] w-[90px] text-white/15" />
+      <div className="absolute left-[18px] top-3.5 text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-50">Diese Woche</div>
 
-      <div className="flex gap-1.5">
+      <div className="mt-8 flex gap-1.5">
         {days.map((d) => {
           const isToday = d.i === 0;
           const isSel = d.i === selected;
-          const tileBg = isSel ? (isToday ? "var(--accent)" : "var(--ink)") : isToday ? "transparent" : "var(--soft)";
-          const tileColor = isSel ? "var(--paper)" : isToday ? "var(--accent)" : "var(--text)";
+          // Weiß = „hier / heute / gewählt"; Gold + Rot = Kategorien.
+          const tileBg = isSel ? "#fff" : isToday ? "transparent" : "rgba(255,255,255,.10)";
+          const tileColor = isSel ? "var(--ink)" : "rgba(255,255,255,.9)";
+          const tileBorder = isToday && !isSel ? "2px solid rgba(255,255,255,.7)" : "2px solid transparent";
           return (
             <button
               key={d.i}
@@ -89,12 +87,15 @@ export default function WeekTimeline({
               aria-label={`${dayLabel(d)}, ${d.items.length} Einträge`}
               className="flex flex-1 flex-col items-center gap-1.5"
             >
-              <span className={`text-[10px] font-extrabold uppercase tracking-[0.08em] ${isToday ? "text-[color:var(--accent)]" : "text-muted"}`}>
+              <span
+                className="text-[10px] font-extrabold uppercase tracking-[0.08em]"
+                style={{ color: isToday ? "#fff" : "rgba(255,255,255,.5)" }}
+              >
                 {d.weekday}
               </span>
               <span
-                className="flex h-10 w-full items-center justify-center rounded-[12px] font-display text-[17px] font-black transition-colors"
-                style={{ background: tileBg, color: tileColor, border: isToday && !isSel ? "2px solid var(--accent)" : "2px solid transparent" }}
+                className="flex h-9 w-full items-center justify-center rounded-[11px] font-display text-[16px] font-black transition-colors"
+                style={{ background: tileBg, color: tileColor, border: tileBorder }}
               >
                 {d.day}
               </span>
@@ -102,17 +103,24 @@ export default function WeekTimeline({
                 {d.items.slice(0, 3).map((it, idx) => (
                   <span key={idx} className="h-1.5 w-1.5 rounded-full" style={{ background: it.kind === "event" ? EVENT_COLOR : POLL_COLOR }} />
                 ))}
-                {d.items.length > 3 && <span className="text-[9px] font-extrabold leading-none text-muted">+</span>}
+                {d.items.length > 3 && <span className="text-[9px] font-extrabold leading-none text-white/55">+</span>}
               </span>
             </button>
           );
         })}
       </div>
 
-      <div key={selected} className="sp-in mt-3">
-        <p className="mb-2 px-0.5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-muted">{dayLabel(active)}</p>
+      <div className="mb-2 mt-3 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/55">{dayLabel(active)}</p>
+        <div className="flex items-center gap-3 text-[10px] font-bold text-white/50">
+          <Legend color={EVENT_COLOR} label="Events" />
+          <Legend color={POLL_COLOR} label="Fristen" />
+        </div>
+      </div>
+
+      <div key={selected} className="sp-in">
         {active.items.length === 0 ? (
-          <div className="rounded-[16px] border border-dashed border-line bg-surface px-4 py-5 text-center text-[13px] text-muted">
+          <div className="rounded-[14px] border border-dashed border-white/15 px-4 py-4 text-center text-[13px] text-white/55">
             Nichts an diesem Tag.
           </div>
         ) : (
@@ -121,23 +129,23 @@ export default function WeekTimeline({
               <Link
                 key={it.kind + it.id}
                 href={it.kind === "event" ? `/events/${it.id}` : `/polls/${it.id}`}
-                className="flex items-center gap-3 rounded-[16px] border border-line bg-surface px-3.5 py-3 transition active:scale-[0.99]"
+                className="flex items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.07] px-3 py-2.5 transition active:scale-[0.99]"
               >
-                <span className="flex w-12 shrink-0 flex-col items-center">
+                <span className="flex w-11 shrink-0 flex-col items-center">
                   <span className="h-2 w-2 rounded-full" style={{ background: it.kind === "event" ? EVENT_COLOR : POLL_COLOR }} />
-                  <span className="tabular mt-1 text-[11px] font-bold text-muted">{it.time}</span>
+                  <span className="tabular mt-1 text-[11px] font-bold text-white/60">{it.time}</span>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14.5px] font-bold leading-tight">{it.title}</p>
-                  <p className="text-[11px] font-semibold text-muted">{it.kind === "event" ? "Event" : "Vote endet"}</p>
+                  <p className="truncate text-[14px] font-bold leading-tight text-white">{it.title}</p>
+                  <p className="text-[11px] font-semibold text-white/50">{it.kind === "event" ? "Event" : "Vote endet"}</p>
                 </div>
-                <IconChevronRight size={16} className="shrink-0 text-muted" />
+                <IconChevronRight size={16} className="shrink-0 text-white/40" />
               </Link>
             ))}
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }
 

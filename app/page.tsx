@@ -86,7 +86,7 @@ export default function TodayPage() {
                 </div>
               </div>
             ) : (
-              <div className="sp-in pt-9">
+              <div className="sp-in">
                 <WeekTimeline events={data.upcoming} polls={data.openPolls} embedded />
               </div>
             )}
