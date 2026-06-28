@@ -305,6 +305,24 @@ async function migrate(): Promise<void> {
       created_at TEXT NOT NULL
     );
 
+    -- Hochgeladene Bilder als BLOB in der DB. Auf Vercel ist das Dateisystem
+    -- ephemer/read-only, deshalb landen Uploads hier statt auf der Platte.
+    CREATE TABLE IF NOT EXISTS upload_blobs (
+      id         TEXT PRIMARY KEY,
+      mime       TEXT NOT NULL,
+      data       BLOB NOT NULL,
+      byte_size  INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    -- Login-Drossel gegen Brute-Force (serverless-sicher, da DB-basiert).
+    CREATE TABLE IF NOT EXISTS auth_throttle (
+      throttle_key  TEXT PRIMARY KEY,
+      fail_count    INTEGER NOT NULL DEFAULT 0,
+      first_fail_at TEXT NOT NULL,
+      locked_until  TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS members (
       device_id           TEXT PRIMARY KEY,
       name                TEXT NOT NULL,

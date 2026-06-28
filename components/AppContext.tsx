@@ -21,7 +21,6 @@ interface AppState {
   theme: "light" | "dark";
   colorTheme: ColorThemeKey;
   login: (rosterKey: string, password: string) => Promise<void>;
-  unlock: (code: string) => Promise<void>;
   logout: () => Promise<void>;
   toggleTheme: () => void;
   setColorTheme: (theme: ColorThemeKey) => void;
@@ -73,10 +72,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAdmin(!!data.speaker);
   }, []);
 
-  const unlock = useCallback(async () => {
-    throw new Error("Der Sprecher-Code wurde durch Account-Rollen ersetzt.");
-  }, []);
-
   const logout = useCallback(async () => {
     await api("/api/auth/logout", { method: "POST" });
     setUser(null);
@@ -109,7 +104,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         theme,
         colorTheme,
         login,
-        unlock,
         logout,
         toggleTheme,
         setColorTheme,

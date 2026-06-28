@@ -561,7 +561,7 @@ Stack:
 - serverseitige Migrationen beim Start
 - PWA-Metadaten
 - Web Push via VAPID
-- lokale Uploads fuer Abizeitung-Bilder
+- Abizeitung-Bilder als BLOB in der Datenbank (Vercel-tauglich, kein lokales Dateisystem)
 - gemeinsame Typen in `lib/types.ts`
 
 Datenbankbereiche:
@@ -587,6 +587,8 @@ Datenbankbereiche:
 - Push Subscriptions
 - Members
 - Point Events
+- Upload Blobs (Bild-Uploads)
+- Auth Throttle (Login-Drossel)
 
 Migrationsprinzip:
 

@@ -3,11 +3,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { getDb, batch } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { deleteImage } from "@/lib/storage";
 import { readJson, oneOf, trimmed } from "@/lib/util";
 
 export const runtime = "nodejs";
 
-const UPLOAD_DIR = path.join(process.cwd(), "data", "uploads", "abizeitung");
+// Nur noch fuer Legacy-Datei-Uploads relevant; neue Bilder liegen als Blob in der DB.
+const LEGACY_UPLOAD_DIR = path.join(process.cwd(), "data", "uploads", "abizeitung");
 
 const TABLES: Record<string, string> = {
   event: "events",
@@ -35,7 +37,11 @@ export async function POST(req: Request) {
       const row = await db
         .prepare("SELECT image_path FROM abizeitung_entries WHERE id = ? AND deleted_at IS NOT NULL")
         .get<{ image_path: string | null }>(id);
-      if (row?.image_path) await fs.unlink(path.join(UPLOAD_DIR, path.basename(row.image_path))).catch(() => {});
+      if (row?.image_path) {
+        await deleteImage(row.image_path);
+        // Legacy-Datei (falls vorhanden) ebenfalls best-effort entfernen.
+        await fs.unlink(path.join(LEGACY_UPLOAD_DIR, path.basename(row.image_path))).catch(() => {});
+      }
     }
     await db.prepare(`DELETE FROM ${table} WHERE id = ? AND deleted_at IS NOT NULL`).run(id);
     return NextResponse.json({ ok: true, purged: true });

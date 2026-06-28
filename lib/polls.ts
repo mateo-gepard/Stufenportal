@@ -153,11 +153,24 @@ async function computeResults(
     rows.forEach((r) => values.set(r.option_id, r.n));
   } else {
     // Ranked -> Borda: je Stimmzettel mit K Rängen gibt Rang r -> (K - r + 1) Punkte.
-    const ballots = await db.prepare("SELECT id FROM ballots WHERE poll_id = ?").all<{ id: string }>(p.id);
-    for (const b of ballots) {
-      const items = await db
-        .prepare("SELECT option_id, rank FROM vote_items WHERE ballot_id = ? ORDER BY rank")
-        .all<{ option_id: string; rank: number | null }>(b.id);
+    // Alle Stimm-Items in einer Query holen und nach Ballot gruppieren (kein N+1).
+    const rows = await db
+      .prepare(
+        `SELECT vi.ballot_id AS ballot_id, vi.option_id AS option_id, vi.rank AS rank
+         FROM vote_items vi JOIN ballots b ON b.id = vi.ballot_id
+         WHERE b.poll_id = ?
+         ORDER BY vi.ballot_id, vi.rank`
+      )
+      .all<{ ballot_id: string; option_id: string; rank: number | null }>(p.id);
+
+    const byBallot = new Map<string, { option_id: string; rank: number | null }[]>();
+    for (const row of rows) {
+      const list = byBallot.get(row.ballot_id) ?? [];
+      list.push({ option_id: row.option_id, rank: row.rank });
+      byBallot.set(row.ballot_id, list);
+    }
+
+    for (const items of byBallot.values()) {
       const rankedItems = items.filter((it) => (it.rank ?? 0) > 0);
       const k = rankedItems.length;
       rankedItems.forEach((it) => {

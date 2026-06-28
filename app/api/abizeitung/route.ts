@@ -1,22 +1,15 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { getDb } from "@/lib/db";
 import { currentUser, deviceId } from "@/lib/auth";
-import { newId, nowIso, trimmed } from "@/lib/util";
+import { saveImage } from "@/lib/storage";
+import { newId, nowIso } from "@/lib/util";
 import type { AbizeitungEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UPLOAD_DIR = path.join(process.cwd(), "data", "uploads", "abizeitung");
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-};
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 interface AbizeitungRow {
   id: string;
@@ -89,16 +82,14 @@ export async function POST(req: Request) {
     if (image.size > MAX_IMAGE_SIZE) {
       return NextResponse.json({ error: "Bild ist zu groß (max. 5 MB)." }, { status: 400 });
     }
-    const ext = IMAGE_TYPES[image.type];
-    if (!ext) {
+    if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
       return NextResponse.json({ error: "Bitte ein JPG, PNG, WebP oder GIF hochladen." }, { status: 400 });
     }
 
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
-    imagePath = `${id}${ext}`;
     imageMime = image.type;
     imageName = image.name.trim().slice(0, 120) || null;
-    await fs.writeFile(path.join(UPLOAD_DIR, imagePath), Buffer.from(await image.arrayBuffer()));
+    // image_path haelt jetzt die Storage-ID des Blobs (kein Dateipfad mehr).
+    imagePath = await saveImage(Buffer.from(await image.arrayBuffer()), image.type);
   }
 
   await getDb()

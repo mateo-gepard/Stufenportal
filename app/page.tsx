@@ -16,11 +16,22 @@ export default function TodayPage() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
+    const load = () => api<TodayDigest>("/api/today").then(setData).catch(() => {});
     api<TodayDigest>("/api/today")
       .then(setData)
       .catch((e) => setErr(e.message));
-    const t = setInterval(() => api<TodayDigest>("/api/today").then(setData).catch(() => {}), 20000);
-    return () => clearInterval(t);
+    // Nur pollen, wenn der Tab sichtbar ist (spart Akku/Requests im Hintergrund).
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 20000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const todayLabel = formatAppDate(Date.now(), { weekday: "short", day: "numeric", month: "short" });

@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
-import { createSession, verifyPassword } from "@/lib/auth";
+import { createSession, verifyPassword, DUMMY_PASSWORD_HASH } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { nowIso, readJson, trimmed } from "@/lib/util";
 import { accountRosterEntries, normalizeRosterName } from "@/lib/stufenliste";
+import { throttleRetryAfter, registerFailure, clearThrottle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
+
+function clientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return req.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function lockedResponse(retryAfter: number): NextResponse {
+  const res = NextResponse.json(
+    { error: "Zu viele Versuche. Bitte spaeter erneut probieren." },
+    { status: 429 }
+  );
+  res.headers.set("Retry-After", String(retryAfter));
+  return res;
+}
 
 function rosterKeyForLoginName(raw: string): string | null | "ambiguous" {
   const normalized = normalizeRosterName(raw);
@@ -25,16 +41,25 @@ function rosterKeyForLoginName(raw: string): string | null | "ambiguous" {
 }
 
 export async function POST(req: Request) {
+  const ipKey = `ip:${clientIp(req)}`;
+  const ipLock = await throttleRetryAfter(ipKey);
+  if (ipLock) return lockedResponse(ipLock);
+
   const body = await readJson(req);
   const rawName = trimmed(body.name || body.roster_key);
   const rosterKey = rosterKeyForLoginName(rawName);
   const password = trimmed(body.password);
   if (!rosterKey || password.length < 4 || password.length > 32) {
+    await registerFailure(ipKey);
     return NextResponse.json({ error: "Name oder Passwort fehlt." }, { status: 400 });
   }
   if (rosterKey === "ambiguous") {
     return NextResponse.json({ error: "Name ist nicht eindeutig. Bitte Vor- und Nachname eingeben." }, { status: 400 });
   }
+
+  const accountKey = `acct:${rosterKey}`;
+  const acctLock = await throttleRetryAfter(accountKey);
+  if (acctLock) return lockedResponse(acctLock);
 
   const user = await getDb()
     .prepare(
@@ -42,10 +67,18 @@ export async function POST(req: Request) {
        FROM users WHERE roster_key = ?`
     )
     .get<any>(rosterKey);
-  if (!user || !verifyPassword(password, String(user.password_hash))) {
+  // Bei unbekanntem Account trotzdem hashen (konstante Antwortzeit, keine Enumeration).
+  const ok = user
+    ? verifyPassword(password, String(user.password_hash))
+    : (verifyPassword(password, DUMMY_PASSWORD_HASH), false);
+  if (!ok) {
+    await registerFailure(ipKey);
+    await registerFailure(accountKey);
     return NextResponse.json({ error: "Name oder Passwort ist falsch." }, { status: 401 });
   }
 
+  await clearThrottle(ipKey);
+  await clearThrottle(accountKey);
   await getDb().prepare("UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?").run(nowIso(), nowIso(), user.id);
   const res = NextResponse.json({
     user: {

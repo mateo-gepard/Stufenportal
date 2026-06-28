@@ -1,72 +1,82 @@
 # Stufenportal
 
-PWA für die Selbstorganisation einer Schul-Stufe: **Heute-Digest · Events mit Meilensteinen & Eintragungslisten · News mit Push · Abstimmungen · transparente Kasse · Sprecher-/Admin-Kern**. Mobile-first, Dark Mode als Heimat.
+Mobile-first PWA für die Selbstorganisation einer Abiturstufe: **Heute-Digest · Events mit Meilensteinen & Eintragungslisten · eigene Aufgaben · News mit Push · Abstimmungen · transparente Kasse · Abizeitung · Leaderboard**. Account-basiert, ohne offene Registrierung.
 
-Gebaut nach `project.md` / `CLAUDE.md` (v1-Scope) — mit zwei bewussten Anpassungen:
+Konzept, Designsystem und Funktionsumfang sind in [`PROJECT.md`](PROJECT.md) beschrieben.
 
-1. **Keine Anmeldung, keine Profile.** Man muss **keinen Namen und keine Mail** angeben. Statt Accounts:
-   - **Anonyme Geräte-ID** (zufällig, im `localStorage`) — nur für „eine Stimme / ein Listen-Eintrag pro Gerät" und Eigentümerschaft eigener Einträge. Keine Personendaten.
-   - Optionaler **Anzeige-Name pro Aktion** (z. B. beim Listen-Eintrag), Default „Anonym".
-   - **Sprecher-Rechte** schaltest du per **Admin-Code** frei (serverseitig geprüft) statt per Rollen-Account.
-2. **Backend lokal statt Supabase.** Die Spec will Supabase (EU). Ohne deinen Supabase-Account kann ich kein Projekt anlegen, darum läuft das Backend als **Next.js Route Handler + echte SQLite-DB** (`data/stufenportal.db`). Voll funktionsfähig, persistent, Rechte serverseitig erzwungen. Die Datenschicht ist gekapselt (`lib/db.ts`), ein späterer Umzug auf Supabase/Postgres ist dadurch überschaubar.
+## Architektur
+
+- **Next.js App Router + TypeScript**, Route Handler als Backend-API.
+- **Datenschicht libSQL/SQLite** (`lib/db.ts`): lokal eine Datei, in Produktion (Vercel) eine Turso-DB — dieselbe Codebasis, gesteuert über Env-Variablen.
+- **Zugewiesene Accounts** statt offener Registrierung: jede Person aus der Stufenliste hat genau einen Account, Login per Name + 6-stelligem Startpasswort.
+- **Serverseitige Sessions** über httpOnly-Cookie `sp_session`; in der DB liegt nur ein Hash des Tokens.
+- **Rollen am Account**: `student` und `sprecher`. Sprecher-Rechte werden in den API-Routen geprüft, das Client-UI ist nur Komfort.
+- **Web-Push** selbst gehostet über VAPID (web-push), keine Drittanbieter.
+- **Bild-Uploads** liegen als BLOB in der DB (`lib/storage.ts`) und werden über eine API-Route ausgeliefert — funktioniert dadurch auch auf Vercels ephemerem Dateisystem.
 
 ## Starten
 
 ```bash
 npm install
-npm run keys     # erzeugt .env.local (Admin-Code + VAPID-Keys) — nur beim ersten Mal
-npm run dev      # http://localhost:3000
+npm run keys            # erzeugt .env.local mit VAPID-Keys — nur beim ersten Mal
+npm run seed:accounts   # legt alle Accounts an, schreibt data/account-passwords.csv (lokal)
+npm run dev             # http://localhost:3000
 ```
 
 Die DB wird beim ersten Start automatisch angelegt und startet **leer**. Für Demo-Inhalte
-(Kuchenverkauf, Abiball, zwei Abstimmungen, Kasse) `SP_SEED=true` in `.env.local` setzen.
+(Events, Abstimmungen, Kasse) `SP_SEED=true` in `.env.local` setzen.
 
-### Sprecher-Modus
+### Accounts & Sprecher
 
-In der App: **Mehr → Sprecher-Modus → Freischalten**, Code eingeben.
-Standard-Code: **`stufe2026`** (in `.env.local` als `ADMIN_CODE` änderbar).
-Erst dann erscheinen „+ Neu", die `⋯`-Aktionen, Abhaken, Befördern, Sichtbarkeit, Soft-Delete und die Verwaltung.
+- `npm run seed:accounts` legt alle Accounts idempotent an und schreibt die Klartext-Startpasswörter nach `data/account-passwords.csv` (gitignored, nie committen).
+- `npm run seed:accounts -- --rotate` setzt neue Startpasswörter.
+- Default-Sprecher sind in [`PROJECT.md`](PROJECT.md) gelistet; weitere lassen sich über `INITIAL_SPEAKER_NAMES="Nachname, Vorname;..."` ergänzen.
+- Sprecher können Passwörter pro Person in der **Verwaltung** zurücksetzen und einmalig anzeigen.
 
-## Was funktioniert (echt, kein Mockup)
+Sprecher-Aktionen (Erstellen/Bearbeiten/Löschen, Kasse mit `paid_by`, Punkte, Papierkorb)
+erscheinen kontextbezogen, sobald ein Account mit Rolle `sprecher` eingeloggt ist.
 
-- **Heute** — priorisierter Digest: beförderte News → Dringendes → kommende Events → offene Polls (gekürzt).
-- **Events** — Status & Fortschritt, Meilensteine (abhakbar), Eintragungslisten mit Slots, Kapazität, Warteliste (rückt automatisch nach), Kommentare.
-- **News** — Priorität, Status `draft/published/hidden/archived`, „auf Heute befördern" (max. 3), **Web-Push** bei wichtig/dringend.
-- **Abstimmungen** — Single Choice, Approval, Ranked (**Borda**). Anonym/offen, reveal live/nach Schluss, Frist (serverseitig erzwungen), `result_visibility_min` (Default 5) gegen De-Anonymisierung. Anonyme Polls bekommen je Abstimmung eine eigene Stufenlisten-Kopie; der eingegebene Name wird nur serverseitig zum Einmal-Abgleich genutzt und nicht angezeigt. Optionen eingefroren nach erster Stimme.
-- **Kasse** — Kassenbuch & großer Kassenstand. `paid_by` ist **nur im Sprecher-Modus** sichtbar (serverseitig, nicht nur im UI).
-- **Abizeitung** — Zitate und Bilder einreichen, mit optionalem Namen, Bildunterschrift und Papierkorb-Verwaltung.
-- **Admin-Kern** — Inline-`⋯`-Bottom-Sheets, Verwaltung mit **Papierkorb** (Soft-Delete → Wiederherstellen / endgültig löschen).
-- **Identität & Leaderboard** — kein Login: Name nur inline beim Eintragen/Kommentieren, lokal gemerkt. Wer mitmacht, wird „bekannt" und kann von Sprechern **Punkte** (mit Grund) bekommen. Das **Leaderboard ist opt-in** (Default aus) — nur wer sich sichtbar schaltet, erscheint.
+## Sicherheit
 
-### Datenschutz-Eigenschaften (umgesetzt)
-
-- Anonyme Polls speichern **keinen** `user_id`/Geräte-Bezug. Neue anonyme Polls prüfen serverseitig gegen eine poll-eigene Stufenliste: Name vorhanden + noch nicht benutzt → Stimme wird angenommen; sonst abgelehnt. In `ballots` landet nur ein HMAC auf die poll-eigene Listen-ID, nicht der eingegebene Name. Der Name taucht in keiner API-Antwort auf. Wenn ein Name fälschlich als benutzt erscheint, kann der Konflikt gemeldet und in der Verwaltung geprüft werden.
-- Soft-Delete überall (`deleted_at`), nichts wird hart entfernt.
-- Push läuft selbst gehostet über VAPID (web-push), keine Drittanbieter.
+- Passwörter mit `scrypt` + Salt gehasht; Vergleich timing-safe.
+- **Login-Drossel** (DB-basiert, serverless-sicher): ab 10 Fehlversuchen pro Account/IP 15 Minuten Sperre (`lib/throttle.ts`).
+- Konstante Antwortzeit bei unbekanntem Namen (kein Account-Enumeration-Leak).
+- **Security-Header** (CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS) in `next.config.mjs`.
+- `paid_by` wird für Nicht-Sprecher serverseitig entfernt, nicht nur im UI.
+- Soft-Delete überall (`deleted_at`); endgültiges Löschen nur aus dem Papierkorb.
+- Anonyme Polls speichern nur `voter_hash = HMAC(poll_secret, "user:"+id)`, nie den Namen.
 
 ## Befehle
 
 ```bash
-npm run dev      # Entwicklung
-npm run build    # Production-Build
-npm run start    # Production-Server
-npm run keys     # .env.local neu erzeugen (nur wenn nicht vorhanden)
+npm run dev             # Entwicklung
+npm run build           # Production-Build (führt Lint aus)
+npm run start           # Production-Server
+npm run lint            # ESLint
+npm run keys            # .env.local neu erzeugen (nur wenn nicht vorhanden)
+npm run seed:accounts   # Accounts anlegen / Passwörter rotieren
 ```
 
 ## Struktur
 
 ```
-app/            Seiten (Heute, Events, Polls, News, Kasse, Mehr, Verwaltung) + API-Routen
-components/     UI-Primitive (Karte, Bottom-Sheet, Meilenstein-Leiste, …), Bottom-Nav, Kontext
-lib/            db.ts (Schema+Seed), auth.ts (Admin-Cookie, Geräte-ID, voter_hash),
-                polls.ts (Auszählung), format.ts, types.ts, push.ts, client.ts
+app/            Seiten (Heute, Events, Polls, Aufgaben, News, Kasse, Mehr, Verwaltung) + API-Routen
+components/     UI-Primitive, Bottom-Nav, Onboarding, AppContext
+lib/            db.ts (Schema), auth.ts (Sessions, Passwörter, voter_hash), throttle.ts,
+                storage.ts (Bild-Blobs), polls.ts (Auszählung), stufenliste.ts, types.ts, push.ts
 public/         PWA-Manifest, Service Worker, Icons
-data/           SQLite-Datei und lokale Uploads (gitignored)
+data/           lokale SQLite-Datei und Account-Passwortliste (gitignored)
+scripts/        genkeys.mjs, seed-accounts.mjs
 ```
+
+## Deployment (Vercel + Turso)
+
+1. Turso-DB anlegen, `TURSO_DATABASE_URL` und `TURSO_AUTH_TOKEN` als Vercel-Env-Variablen setzen.
+2. VAPID-Keys (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) setzen.
+3. `npm run seed:accounts` einmalig gegen die Produktions-DB ausführen (mit gesetzten Turso-Env-Variablen) und die Passwortliste sicher verteilen.
 
 ## Hinweise
 
-- **Web-Push** braucht in Produktion HTTPS. Lokal funktioniert es in Chrome auf `localhost`. „Push aktivieren" findest du unter **Mehr**.
-- **Abizeitung-Bilder** werden lokal unter `data/uploads/abizeitung` gespeichert und über eine API-Route ausgeliefert.
-- Next.js ist auf der gepatchten **14.2.35** gepinnt. Die noch offenen npm-Advisories verlangen einen Sprung auf Next 16 (Breaking) und betreffen v. a. Self-Hosting-DoS/Cache-Themen — bewusst nicht in diesem v1 gemacht.
-- DB zurücksetzen: Server stoppen, `data/stufenportal.db*` löschen, neu starten (startet leer; mit `SP_SEED=true` wieder mit Demo-Daten).
+- **Web-Push** braucht in Produktion HTTPS. Lokal funktioniert es in Chrome auf `localhost`.
+- Next.js ist auf **14.2.35** gepinnt.
+- DB lokal zurücksetzen: Server stoppen, `data/stufenportal.db*` löschen, neu starten.

@@ -5,7 +5,6 @@ import { getDb } from "./db";
 import { nowIso } from "./util";
 
 export const SESSION_COOKIE = "sp_session";
-export const ADMIN_COOKIE = "sp_admin";
 
 const SESSION_DAYS = 30;
 const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -69,6 +68,10 @@ export function verifyPassword(password: string, stored: string): boolean {
   const expected = Buffer.from(hash, "hex");
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
+
+// Konstanter Vergleich gegen einen Dummy-Hash, wenn kein Account existiert.
+// Verhindert, dass die Antwortzeit verraet, welche Namen einen Account haben.
+export const DUMMY_PASSWORD_HASH = hashPassword(crypto.randomBytes(16).toString("hex"));
 
 export async function currentUser(): Promise<AuthUser | null> {
   const token = cookies().get(SESSION_COOKIE)?.value;
@@ -134,16 +137,6 @@ export async function requireSpeaker(): Promise<NextResponse | null> {
 
 export const isAdmin = isSpeaker;
 export const requireAdmin = requireSpeaker;
-
-// Deprecated compatibility exports for old admin routes; the UI no longer uses
-// code-based speaker mode, but keeping these avoids breaking stale clients.
-export function adminToken(): string {
-  return "";
-}
-
-export function checkAdminCode(_code?: string): boolean {
-  return false;
-}
 
 // Legacy device identity is kept only for old ownership/vote data.
 export function deviceId(req: Request): string | null {
