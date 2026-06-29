@@ -42,12 +42,13 @@ export default function MorePage() {
         setBadges(badgeData);
       })
       .catch(() => {
-        setMe({ name: user?.display_name || "", show_on_leaderboard: false, points: 0, history: [] });
+        setMe({ name: user?.display_name || "", show_on_leaderboard: false, leaderboard_active: true, points: 0, history: [] });
         setBadges(null);
       });
   }, [user?.display_name]);
 
   const show = !!me?.show_on_leaderboard;
+  const leaderboardActive = me?.leaderboard_active ?? true;
 
   async function saveLb(on: boolean) {
     setLbBusy(true);
@@ -118,7 +119,9 @@ export default function MorePage() {
           <div className="min-w-0">
             <p className="font-display text-[28px] font-black leading-none">{user?.display_name || "Deine Stufe"}</p>
             <p className="mt-1 text-small text-white/62">
-              {me ? `${me.points} ${me.points === 1 ? "Punkt" : "Punkte"} · Leaderboard ${show ? "sichtbar" : "aus"}` : "Account aktiv"}
+              {me
+                ? `${me.points} ${me.points === 1 ? "Punkt" : "Punkte"} · Leaderboard ${leaderboardActive ? (show ? "sichtbar" : "aus") : "pausiert"}`
+                : "Account aktiv"}
             </p>
           </div>
         </div>
@@ -163,7 +166,7 @@ export default function MorePage() {
         <SettingSwitch
           icon={<IconMedal size={19} />}
           title="Im Leaderboard zeigen"
-          subtitle="Standardmäßig an, jederzeit aus"
+          subtitle={leaderboardActive ? "Standardmäßig an, jederzeit aus" : "Von den Stufensprechern pausiert"}
           checked={show}
           onToggle={() => onToggleLb(!show)}
         />
@@ -245,7 +248,8 @@ export default function MorePage() {
       <p className="mt-8 px-1 text-[12px] leading-relaxed text-muted">
         Dein Account ist fest mit der Stufenliste verbunden. Abstimmungen sind dadurch auf eine Stimme pro Person
         begrenzt; bei anonymen Votes bleibt nur die Auswahl anonymisiert gespeichert. Das Leaderboard ist freiwillig
-        und standardmäßig sichtbar, kann hier aber ausgeschaltet werden.
+        und standardmäßig sichtbar, kann hier aber ausgeschaltet werden. Stufensprecher können die Rangliste zusätzlich
+        für alle pausieren.
       </p>
     </div>
   );

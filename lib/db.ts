@@ -116,6 +116,12 @@ async function migrate(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_user_seen_items_user_section ON user_seen_items(user_id, section);
 
+    CREATE TABLE IF NOT EXISTS app_settings (
+      setting_key   TEXT PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_at    TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS events (
       id          TEXT PRIMARY KEY,
       title       TEXT NOT NULL,

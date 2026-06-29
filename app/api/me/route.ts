@@ -3,6 +3,7 @@ import { currentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { pointsForUser } from "@/lib/members";
 import { nowIso, readJson } from "@/lib/util";
+import { leaderboardIsActive } from "@/lib/app-settings";
 import type { Me } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -21,6 +22,7 @@ export async function GET() {
   return NextResponse.json({
     name: user.display_name,
     show_on_leaderboard: user.show_on_leaderboard,
+    leaderboard_active: await leaderboardIsActive(),
     points: await pointsForUser(user.id),
     history,
   } satisfies Me);

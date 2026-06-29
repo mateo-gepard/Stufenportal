@@ -150,6 +150,7 @@ export interface AbizeitungEntry {
 export interface Me {
   name: string;
   show_on_leaderboard: boolean;
+  leaderboard_active: boolean;
   points: number;
   history: { id: string; points: number; reason: string; created_at: string }[];
 }

@@ -7,37 +7,80 @@ import { useApp } from "@/components/AppContext";
 import type { LeaderboardRow, MemberRow } from "@/lib/types";
 import { Card, SkeletonList, BottomSheet, Button } from "@/components/ui";
 import { Field, Input } from "@/components/form";
-import { IconPlus } from "@/components/icons";
+import { IconPlay, IconPlus, IconStop } from "@/components/icons";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
+
+type LeaderboardData = {
+  active: boolean;
+  board: LeaderboardRow[];
+};
 
 export default function LeaderboardPage() {
   const { admin } = useApp();
-  const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
+  const [data, setData] = useState<LeaderboardData | null>(null);
   const [award, setAward] = useState(false);
+  const [toggleBusy, setToggleBusy] = useState(false);
+  const [toggleErr, setToggleErr] = useState("");
 
   const load = useCallback(() => {
-    (api("/api/leaderboard") as Promise<{ board: LeaderboardRow[] }>)
-      .then((d) => setBoard(d.board))
-      .catch(() => setBoard([]));
+    return (api("/api/leaderboard") as Promise<LeaderboardData>)
+      .then((d) => setData({ active: d.active ?? true, board: d.board }))
+      .catch(() => setData({ active: true, board: [] }));
   }, []);
-  useEffect(load, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const active = data?.active ?? true;
+  const board = data?.board ?? null;
+
+  async function toggleActive() {
+    setToggleBusy(true);
+    setToggleErr("");
+    try {
+      await api("/api/leaderboard", { method: "PATCH", body: { active: !active } });
+      await load();
+    } catch (e) {
+      setToggleErr((e as Error).message);
+    } finally {
+      setToggleBusy(false);
+    }
+  }
 
   return (
     <div className="sp-in pb-6">
       <div className="mb-7 flex items-start justify-between gap-4">
         <p className="max-w-[285px] text-[17px] font-medium leading-[1.5] text-muted">
-          Standardmäßig sichtbar, aber freiwillig. Du kannst dich im Mehr-Tab ausblenden; Sprecher vergeben Punkte mit Grund.
+          {active
+            ? "Standardmäßig sichtbar, aber freiwillig. Du kannst dich im Mehr-Tab ausblenden; Sprecher vergeben Punkte mit Grund."
+            : "Das Leaderboard ist gerade von den Stufensprechern pausiert. Punkte bleiben gespeichert."}
         </p>
         {admin && (
-          <Button onClick={() => setAward(true)} variant="surface">
-            <IconPlus size={17} />
-            Punkte
-          </Button>
+          <div className="flex shrink-0 flex-col gap-2">
+            <Button onClick={toggleActive} variant={active ? "surface" : "primary"} disabled={toggleBusy}>
+              {active ? <IconStop size={17} /> : <IconPlay size={17} />}
+              {toggleBusy ? "..." : active ? "Aus" : "An"}
+            </Button>
+            <Button onClick={() => setAward(true)} variant="surface">
+              <IconPlus size={17} />
+              Punkte
+            </Button>
+          </div>
         )}
       </div>
+      {toggleErr && <p className="mb-3 rounded-[14px] bg-[color:var(--danger-soft)] px-3 py-2 text-[13px] font-bold text-danger">{toggleErr}</p>}
 
-      {!board && <SkeletonList rows={3} />}
-      {board && board.length === 0 && (
+      {!data && <SkeletonList rows={3} />}
+      {data && !active && (
+        <Card className="text-center">
+          <p className="py-6 font-semibold text-muted">
+            Leaderboard pausiert.
+            <br />
+            {admin ? "Du kannst es oben wieder aktivieren." : "Die Rangliste ist aktuell nicht öffentlich sichtbar."}
+          </p>
+        </Card>
+      )}
+      {data && active && board && board.length === 0 && (
         <Card className="text-center text-muted">
           <p className="py-6">
             Aktuell ist niemand sichtbar.
@@ -49,14 +92,14 @@ export default function LeaderboardPage() {
         </Card>
       )}
 
-      {board && board.length > 0 && (
+      {active && board && board.length > 0 && (
         <LeaderboardPodium board={board} />
       )}
 
-      {board && <YourPosition board={board} />}
+      {active && board && <YourPosition board={board} />}
 
       <div className="sp-stagger divide-y divide-line">
-        {board?.slice(3).map((row) => (
+        {active && board?.slice(3).map((row) => (
           <LeaderboardListRow key={row.rank + row.name} row={row} topPoints={board[0]?.points ?? 0} />
         ))}
       </div>
